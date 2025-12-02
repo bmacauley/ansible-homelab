@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Ansible
+*.retry
+.ansible/
+ansible.log
+*.vault-password
+vault-password.txt
+inventory/ec2.py
+inventory/ec2.ini
+
+# Ansible Galaxy
+.galaxy_install_info
+
+# Sensitive data
+**/vault_pass*
+**/vault_password*
+**/secrets.yml
+**/secret_*
+**/*_secrets.yml
+**/*.pem
+**/*.key
+**/*.crt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+tmp/
+temp/

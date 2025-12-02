@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mise install:*)",
+      "Bash(mise list:*)",
+      "Bash(mise config:*)",
+      "Bash(mise trust:*)",
+      "Bash(uv init:*)",
+      "Bash(echo:*)",
+      "Bash(uv --version:*)",
+      "Bash(/opt/homebrew/bin/mise exec:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  }
+}
