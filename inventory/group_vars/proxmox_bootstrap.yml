@@ -8,4 +8,3 @@ tailscale_args: "--accept-routes --accept-dns --ssh"
 
 # Tailscale state (always present for bootstrap)
 tailscale_state: present
-

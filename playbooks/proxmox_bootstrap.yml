@@ -137,4 +137,3 @@
           - "Tailscale hostname: {{ (tailscale_json.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
           - "Update inventory/hosts.yml with the Tailscale hostname"
           - "Then use: make proxmox"
-

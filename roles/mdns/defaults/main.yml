@@ -28,4 +28,3 @@ mdns_http_port: 8006
 #       type: "_myservice._tcp"
 #       port: 1234
 mdns_extra_services: []
-

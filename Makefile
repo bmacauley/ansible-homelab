@@ -55,6 +55,7 @@ help: ## Show help
 	@echo 'Utilities:'
 	@echo '  make install deps    Install Ansible collections'
 	@echo '  make tests           Run all molecule tests'
+	@echo '  make lint            Lint playbooks and roles'
 	@echo '  make clean           Destroy all molecule environments'
 	@echo ''
 	@echo 'Examples:'
@@ -106,7 +107,7 @@ destroy: ## Destroy molecule test environment
 # ----------------------------------------------------------------
 # Utility targets
 # ----------------------------------------------------------------
-.PHONY: install deps tests clean
+.PHONY: install deps tests clean lint
 
 install: ## Utility selector
 	@:
@@ -121,6 +122,9 @@ tests: ## Run ALL molecule tests (both scenarios)
 clean: ## Destroy all molecule environments
 	uv run molecule destroy -s proxmox || true
 	uv run molecule destroy -s proxmox_bootstrap || true
+
+lint: ## Lint Ansible playbooks and roles
+	uv run ansible-lint
 
 # ----------------------------------------------------------------
 # Catch-all (prevents "No rule to make target" errors)

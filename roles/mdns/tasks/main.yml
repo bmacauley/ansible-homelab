@@ -76,7 +76,7 @@
 
 - name: Verify mDNS is working
   ansible.builtin.command: avahi-browse -at
-  register: avahi_browse
+  register: mdns_avahi_browse
   changed_when: false
   failed_when: false
   tags:
@@ -89,4 +89,3 @@
   tags:
     - mdns
     - verify
-

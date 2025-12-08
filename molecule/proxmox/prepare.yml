@@ -13,4 +13,3 @@
       ansible.builtin.set_fact:
         vault_token_mock: "test-token-12345"
         tailscale_authkey: "tskey-test-mock-key-12345"
-

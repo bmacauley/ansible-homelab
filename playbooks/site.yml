@@ -16,7 +16,7 @@
       tags:
         - always
 
-  roles:
+  roles: []
     # Add roles here as they are developed or installed
     # Examples:
     # - common

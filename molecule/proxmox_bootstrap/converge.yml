@@ -67,4 +67,3 @@
           - "Bootstrap test complete!"
           - "In real bootstrap, Tailscale hostname would be displayed"
           - "User would update inventory/hosts.yml with Tailscale hostname"
-

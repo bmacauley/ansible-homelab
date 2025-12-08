@@ -57,4 +57,3 @@
       when: tailscale_state == 'absent'
       vars:
         tailscale_state: absent
-

@@ -1,0 +1,11 @@
+---
+# Ansible-lint configuration
+
+# Skip these rules
+skip_list:
+  - run-once  # Intentional for Vault auth tasks that should only run once
+
+# Exclude paths
+exclude_paths:
+  - .venv/
+  - .git/
