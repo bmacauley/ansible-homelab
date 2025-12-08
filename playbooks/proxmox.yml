@@ -98,11 +98,9 @@
     - role: artis3n.tailscale.machine
       vars:
         state: "{{ tailscale_state | default('present') }}"
-    # Add additional roles here as they are developed or installed
-    # Examples:
-    # - common
-    # - docker
-    # - monitoring
+    - role: mdns
+      tags:
+        - mdns
 
   post_tasks:
     - name: Validate Proxmox node uptime

@@ -26,3 +26,7 @@ tailscale_args: "--accept-routes --accept-dns --ssh"
 
 # Optional: Tailscale state directory
 # tailscale_state_directory: "/var/lib/tailscale"
+
+# mDNS configuration
+mdns_hostname: "proxmox"
+mdns_interface: "vmbr0"  # Required for Proxmox (bridge interface)

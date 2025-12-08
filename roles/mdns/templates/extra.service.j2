@@ -1,0 +1,16 @@
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<!-- {{ ansible_managed }} -->
+<service-group>
+  <name replace-wildcards="yes">{{ item.name }} on %h</name>
+  <service>
+    <type>{{ item.type }}</type>
+    <port>{{ item.port }}</port>
+{% if item.txt is defined %}
+{% for txt in item.txt %}
+    <txt-record>{{ txt }}</txt-record>
+{% endfor %}
+{% endif %}
+  </service>
+</service-group>
+

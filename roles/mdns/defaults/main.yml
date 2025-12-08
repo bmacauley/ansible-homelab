@@ -1,0 +1,31 @@
+---
+# mDNS role defaults
+
+# Hostname to advertise (defaults to system hostname)
+mdns_hostname: "{{ ansible_hostname }}"
+
+# Network interface for mDNS (required for Proxmox with bridges/Tailscale)
+# Set to empty string "" to auto-detect (may not work with bridges)
+mdns_interface: "vmbr0"
+
+# Domain to use (typically .local)
+mdns_domain: "local"
+
+# Whether to publish workstation service
+mdns_publish_workstation: true
+
+# Whether to publish SSH service
+mdns_publish_ssh: true
+
+# Whether to publish HTTP service (for Proxmox web UI)
+mdns_publish_http: true
+mdns_http_port: 8006
+
+# Additional services to publish (list of dicts with name, type, port)
+# Example:
+#   mdns_extra_services:
+#     - name: "My Service"
+#       type: "_myservice._tcp"
+#       port: 1234
+mdns_extra_services: []
+

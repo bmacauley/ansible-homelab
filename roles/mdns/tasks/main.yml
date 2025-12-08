@@ -1,0 +1,92 @@
+---
+# mDNS role tasks - Install and configure Avahi for mDNS
+
+- name: Install avahi packages
+  ansible.builtin.apt:
+    name:
+      - avahi-daemon
+      - avahi-utils
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+    - mdns
+    - packages
+
+- name: Configure avahi-daemon
+  ansible.builtin.template:
+    src: avahi-daemon.conf.j2
+    dest: /etc/avahi/avahi-daemon.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart avahi-daemon
+  tags:
+    - mdns
+    - config
+
+- name: Create Proxmox web UI service file
+  ansible.builtin.template:
+    src: proxmox.service.j2
+    dest: /etc/avahi/services/proxmox.service
+    owner: root
+    group: root
+    mode: "0644"
+  when: mdns_publish_http
+  notify: Restart avahi-daemon
+  tags:
+    - mdns
+    - config
+
+- name: Create SSH service file
+  ansible.builtin.template:
+    src: ssh.service.j2
+    dest: /etc/avahi/services/ssh.service
+    owner: root
+    group: root
+    mode: "0644"
+  when: mdns_publish_ssh
+  notify: Restart avahi-daemon
+  tags:
+    - mdns
+    - config
+
+- name: Create extra service files
+  ansible.builtin.template:
+    src: extra.service.j2
+    dest: "/etc/avahi/services/{{ item.name | lower | replace(' ', '-') }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ mdns_extra_services }}"
+  when: mdns_extra_services | length > 0
+  notify: Restart avahi-daemon
+  tags:
+    - mdns
+    - config
+
+- name: Enable and start avahi-daemon
+  ansible.builtin.systemd:
+    name: avahi-daemon
+    enabled: true
+    state: started
+  tags:
+    - mdns
+    - service
+
+- name: Verify mDNS is working
+  ansible.builtin.command: avahi-browse -at
+  register: avahi_browse
+  changed_when: false
+  failed_when: false
+  tags:
+    - mdns
+    - verify
+
+- name: Display mDNS status
+  ansible.builtin.debug:
+    msg: "mDNS hostname: {{ mdns_hostname }}.{{ mdns_domain }}"
+  tags:
+    - mdns
+    - verify
+
