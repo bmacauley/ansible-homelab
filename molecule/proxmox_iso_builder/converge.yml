@@ -1,0 +1,72 @@
+---
+- name: Converge - Test proxmox_iso_builder role
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    # Override to not install proxmox-auto-install-assistant (not available in Debian)
+    proxmox_iso_builder_packages:
+      - xorriso
+      - isolinux
+    # Use Debian codename
+    proxmox_iso_builder_codename: "bookworm"
+    # Skip version check since we're not installing proxmox tools
+    proxmox_iso_builder_skip_version_check: true
+    proxmox_iso_builder_disable_enterprise_repo: true
+    proxmox_iso_builder_enable_no_subscription_repo: false
+    proxmox_iso_builder_workdir: "/var/lib/vz/template/iso"
+
+  tasks:
+    - name: Check if enterprise repo exists
+      ansible.builtin.stat:
+        path: /etc/apt/sources.list.d/pve-enterprise.list
+      register: proxmox_iso_builder_enterprise_repo
+
+    - name: Disable Proxmox enterprise repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/pve-enterprise.list
+        content: |
+          # Disabled - requires subscription
+          # deb https://enterprise.proxmox.com/debian/pve {{ proxmox_iso_builder_codename }} pve-enterprise
+        owner: root
+        group: root
+        mode: "0644"
+      when:
+        - proxmox_iso_builder_disable_enterprise_repo
+        - proxmox_iso_builder_enterprise_repo.stat.exists
+
+    - name: Install ISO building tools
+      ansible.builtin.apt:
+        name: "{{ proxmox_iso_builder_packages }}"
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Ensure ISO working directory exists
+      ansible.builtin.file:
+        path: "{{ proxmox_iso_builder_workdir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+  post_tasks:
+    - name: Verify enterprise repo is disabled
+      ansible.builtin.command: cat /etc/apt/sources.list.d/pve-enterprise.list
+      register: proxmox_iso_builder_test_enterprise
+      changed_when: false
+
+    - name: Assert enterprise repo is commented out
+      ansible.builtin.assert:
+        that:
+          - "'Disabled' in proxmox_iso_builder_test_enterprise.stdout or '# deb' in proxmox_iso_builder_test_enterprise.stdout"
+        fail_msg: "Enterprise repo should be disabled"
+
+    - name: Verify xorriso is installed
+      ansible.builtin.command: xorriso --version
+      register: proxmox_iso_builder_test_xorriso
+      changed_when: false
+
+    - name: Display xorriso version
+      ansible.builtin.debug:
+        msg: "xorriso installed: {{ proxmox_iso_builder_test_xorriso.stdout_lines[0] }}"

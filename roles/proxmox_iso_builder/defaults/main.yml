@@ -1,0 +1,18 @@
+---
+# proxmox_iso_builder role defaults
+
+# Proxmox version codename (bookworm for PVE 8+, trixie for PVE 9)
+proxmox_iso_builder_codename: "{{ ansible_distribution_release }}"
+
+# Repository configuration
+proxmox_iso_builder_disable_enterprise_repo: true
+proxmox_iso_builder_enable_no_subscription_repo: true
+
+# ISO tools to install
+proxmox_iso_builder_packages:
+  - xorriso
+  - isolinux
+  - proxmox-auto-install-assistant
+
+# Working directory for ISO builds
+proxmox_iso_builder_workdir: "/var/lib/vz/template/iso"

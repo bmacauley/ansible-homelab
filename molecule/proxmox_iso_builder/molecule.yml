@@ -1,0 +1,39 @@
+---
+dependency:
+  name: galaxy
+  options:
+    role-file: ../../requirements.yml
+    requirements-file: ../../requirements.yml
+driver:
+  name: docker
+platforms:
+  - name: proxmox-iso-builder-test
+    image: geerlingguy/docker-debian12-ansible:latest
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    command: ""
+    pre_build_image: true
+    tmpfs:
+      - /run
+      - /tmp
+    cgroupns_mode: host
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      proxmox-iso-builder-test:
+        ansible_python_interpreter: /usr/bin/python3
+  playbooks:
+    prepare: prepare.yml
+    converge: converge.yml
+    verify: verify.yml
+  config_options:
+    defaults:
+      host_key_checking: false
+      retry_files_enabled: false
+      roles_path: ../../roles
+verifier:
+  name: ansible
+  options:
+    show-diff: true

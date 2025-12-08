@@ -115,13 +115,15 @@ install: ## Utility selector
 deps: ## Install Ansible collections
 	uv run ansible-galaxy collection install -r requirements.yml
 
-tests: ## Run ALL molecule tests (both scenarios)
+tests: ## Run ALL molecule tests
 	uv run molecule test -s proxmox
 	uv run molecule test -s proxmox_bootstrap
+	uv run molecule test -s proxmox_iso_builder
 
 clean: ## Destroy all molecule environments
 	uv run molecule destroy -s proxmox || true
 	uv run molecule destroy -s proxmox_bootstrap || true
+	uv run molecule destroy -s proxmox_iso_builder || true
 
 lint: ## Lint Ansible playbooks and roles
 	uv run ansible-lint

@@ -1,0 +1,40 @@
+---
+- name: Verify proxmox_iso_builder role
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Verify xorriso is installed
+      ansible.builtin.command: which xorriso
+      register: proxmox_iso_builder_verify_xorriso
+      changed_when: false
+
+    - name: Verify isolinux is installed
+      ansible.builtin.stat:
+        path: /usr/lib/ISOLINUX/isolinux.bin
+      register: proxmox_iso_builder_verify_isolinux
+
+    - name: Assert isolinux exists
+      ansible.builtin.assert:
+        that:
+          - proxmox_iso_builder_verify_isolinux.stat.exists
+        fail_msg: "isolinux.bin should exist"
+
+    - name: Verify ISO working directory exists
+      ansible.builtin.stat:
+        path: /var/lib/vz/template/iso
+      register: proxmox_iso_builder_verify_workdir
+
+    - name: Assert working directory exists
+      ansible.builtin.assert:
+        that:
+          - proxmox_iso_builder_verify_workdir.stat.exists
+          - proxmox_iso_builder_verify_workdir.stat.isdir
+        fail_msg: "ISO working directory should exist"
+
+    - name: Display verification results
+      ansible.builtin.debug:
+        msg:
+          - "xorriso: {{ proxmox_iso_builder_verify_xorriso.stdout }}"
+          - "isolinux: {{ proxmox_iso_builder_verify_isolinux.stat.path }}"
+          - "workdir: {{ proxmox_iso_builder_verify_workdir.stat.path }}"
