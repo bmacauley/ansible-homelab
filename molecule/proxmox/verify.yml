@@ -1,0 +1,28 @@
+---
+- name: Verify playbook execution
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Verify Python is installed
+      ansible.builtin.command: python3 --version
+      register: python_version
+      changed_when: false
+
+    - name: Display Python version
+      ansible.builtin.debug:
+        msg: "Python version: {{ python_version.stdout }}"
+
+    - name: Verify apt is working
+      ansible.builtin.command: apt --version
+      register: apt_version
+      changed_when: false
+
+    - name: Display apt version
+      ansible.builtin.debug:
+        msg: "APT version: {{ apt_version.stdout_lines[0] }}"
+
+    - name: Verify test completed successfully
+      ansible.builtin.debug:
+        msg: "All verification checks passed"
+

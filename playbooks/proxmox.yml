@@ -1,0 +1,119 @@
+---
+- name: Configure Proxmox hosts
+  hosts: proxmox
+  gather_facts: true
+  become: true
+
+  vars_prompt:
+    - name: vault_username
+      prompt: "Vault username (press Enter to use VAULT_TOKEN if set)"
+      default: "{{ lookup('env', 'VAULT_USERNAME') | default('bmacauley', true) }}"
+      private: false
+    - name: vault_password
+      prompt: "Vault password (press Enter to skip if VAULT_TOKEN is set)"
+      private: true
+      default: ""
+
+  vars:
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://127.0.0.1:8200', true) }}"
+    vault_token_env: "{{ lookup('env', 'VAULT_TOKEN') | default('', true) }}"
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+      tags:
+        - always
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+      tags:
+        - always
+
+    - name: Set Vault token from environment
+      ansible.builtin.set_fact:
+        vault_token: "{{ vault_token_env }}"
+      when: vault_token_env != ''
+      tags:
+        - always
+
+    - name: Authenticate to Vault with userpass and get token
+      ansible.builtin.command: >
+        python3 -c "
+        import hvac, json, sys;
+        client = hvac.Client(url='{{ vault_addr }}');
+        login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}');
+        print(json.dumps({'token': login['auth']['client_token']}))
+        "
+      register: vault_login_result
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+      when: vault_token_env == '' and vault_password != ''
+      tags:
+        - always
+
+    - name: Set Vault token from userpass login
+      ansible.builtin.set_fact:
+        vault_token: "{{ (vault_login_result.stdout | from_json).token }}"
+      when: vault_token_env == '' and vault_password != '' and vault_login_result is defined
+      tags:
+        - always
+
+    - name: Debug - Test Vault connection
+      ansible.builtin.debug:
+        msg:
+          - "Vault addr: {{ vault_addr }}"
+          - "Token set: {{ 'yes' if vault_token else 'no' }}"
+          - "Token length: {{ vault_token | length if vault_token else 0 }}"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags:
+        - always
+
+    - name: Fetch Tailscale auth key from Vault KV v2
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        mount_point: "kv"
+        engine_mount_point: "kv"
+        path: "tailscale"
+      register: tailscale_secret
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags:
+        - always
+
+    - name: Set tailscale_authkey fact
+      ansible.builtin.set_fact:
+        tailscale_authkey: "{{ tailscale_secret.data.data['auth-key'] }}"
+      when: tailscale_secret is defined and tailscale_secret.data is defined
+      tags:
+        - always
+
+  roles:
+    - role: artis3n.tailscale.machine
+      vars:
+        state: "{{ tailscale_state | default('present') }}"
+    # Add additional roles here as they are developed or installed
+    # Examples:
+    # - common
+    # - docker
+    # - monitoring
+
+  post_tasks:
+    - name: Validate Proxmox node uptime
+      ansible.builtin.command: uptime
+      changed_when: false
+      register: uptime_output
+      tags:
+        - validation
+
+    - name: Display uptime
+      ansible.builtin.debug:
+        msg: "{{ uptime_output.stdout }}"
+      tags:
+        - validation

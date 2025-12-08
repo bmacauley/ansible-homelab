@@ -1,0 +1,32 @@
+---
+- name: Configure all homelab infrastructure
+  hosts: all
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+      tags:
+        - always
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+      tags:
+        - always
+
+  roles:
+    # Add roles here as they are developed or installed
+    # Examples:
+    # - common
+    # - tailscale
+    # - docker
+    # - monitoring
+
+  post_tasks:
+    - name: Validate node uptime
+      ansible.builtin.command: uptime
+      changed_when: false
+      tags:
+        - validation

@@ -2,4 +2,4 @@
 gh = "latest"
 uv = "latest"
 prek = "latest"
-python = "3.14"
+python = "3.13"

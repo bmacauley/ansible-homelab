@@ -1,0 +1,140 @@
+---
+# Bootstrap playbook - Use this to install Tailscale on new hosts via IP address
+# After bootstrap, use the regular proxmox.yml playbook via Tailscale
+#
+# Usage:
+#   1. Set the IP address in inventory/hosts.yml under proxmox_bootstrap
+#   2. Set VAULT_TOKEN env var or enter credentials when prompted
+#   3. Run: make bootstrap
+#   4. After success, use: make proxmox (via Tailscale)
+
+- name: Bootstrap Proxmox hosts with Tailscale
+  hosts: proxmox_bootstrap
+  gather_facts: true
+  become: true
+
+  vars_prompt:
+    - name: proxmox_root_password
+      prompt: "Proxmox root password (for SSH access)"
+      private: true
+    - name: vault_username
+      prompt: "Vault username (press Enter to use VAULT_TOKEN if set)"
+      default: "{{ lookup('env', 'VAULT_USERNAME') | default('bmacauley', true) }}"
+      private: false
+    - name: vault_password
+      prompt: "Vault password (press Enter to skip if VAULT_TOKEN is set)"
+      private: true
+      default: ""
+
+  vars:
+    ansible_ssh_pass: "{{ proxmox_root_password }}"
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://127.0.0.1:8200', true) }}"
+    vault_token_env: "{{ lookup('env', 'VAULT_TOKEN') | default('', true) }}"
+    tailscale_state: present
+    tailscale_args: "--accept-routes --accept-dns --ssh"
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+      tags:
+        - always
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+      tags:
+        - always
+
+    - name: Set Vault token from environment
+      ansible.builtin.set_fact:
+        vault_token: "{{ vault_token_env }}"
+      when: vault_token_env != ''
+      tags:
+        - always
+
+    - name: Authenticate to Vault with userpass and get token
+      ansible.builtin.command: >
+        python3 -c "
+        import hvac, json, sys;
+        client = hvac.Client(url='{{ vault_addr }}');
+        login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}');
+        print(json.dumps({'token': login['auth']['client_token']}))
+        "
+      register: vault_login_result
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+      when: vault_token_env == '' and vault_password != ''
+      tags:
+        - always
+
+    - name: Set Vault token from userpass login
+      ansible.builtin.set_fact:
+        vault_token: "{{ (vault_login_result.stdout | from_json).token }}"
+      when: vault_token_env == '' and vault_password != '' and vault_login_result is defined
+      tags:
+        - always
+
+    - name: Debug - Test Vault connection
+      ansible.builtin.debug:
+        msg:
+          - "Vault addr: {{ vault_addr }}"
+          - "Token set: {{ 'yes' if vault_token else 'no' }}"
+          - "Token length: {{ vault_token | length if vault_token else 0 }}"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags:
+        - always
+
+    - name: Fetch Tailscale auth key from Vault KV v2
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        mount_point: "kv"
+        engine_mount_point: "kv"
+        path: "tailscale"
+      register: tailscale_secret
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags:
+        - always
+
+    - name: Set tailscale_authkey fact
+      ansible.builtin.set_fact:
+        tailscale_authkey: "{{ tailscale_secret.data.data['auth-key'] }}"
+      when: tailscale_secret is defined and tailscale_secret.data is defined
+      tags:
+        - always
+
+  roles:
+    - role: artis3n.tailscale.machine
+      vars:
+        state: "{{ tailscale_state }}"
+
+  post_tasks:
+    - name: Verify Tailscale is running
+      ansible.builtin.command: tailscale status
+      register: tailscale_status
+      changed_when: false
+      failed_when: tailscale_status.rc != 0
+
+    - name: Display Tailscale status
+      ansible.builtin.debug:
+        msg: "{{ tailscale_status.stdout_lines }}"
+
+    - name: Get Tailscale hostname
+      ansible.builtin.command: tailscale status --json
+      register: tailscale_json
+      changed_when: false
+
+    - name: Display connection info
+      ansible.builtin.debug:
+        msg:
+          - "Bootstrap complete!"
+          - "Tailscale hostname: {{ (tailscale_json.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
+          - "Update inventory/hosts.yml with the Tailscale hostname"
+          - "Then use: make proxmox"
+

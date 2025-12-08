@@ -1,0 +1,8 @@
+---
+# Example vault file for Proxmox group secrets
+# Copy this to proxmox_vault.yml and encrypt it with:
+# ansible-vault encrypt inventory/group_vars/proxmox_vault.yml
+
+# Tailscale authentication key
+# Get this from: https://login.tailscale.com/admin/settings/keys
+vault_tailscale_authkey: "tskey-auth-XXXXXXXXXXXXXXXXXXXXXXXXXXXXX"

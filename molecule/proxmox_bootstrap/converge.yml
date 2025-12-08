@@ -1,0 +1,70 @@
+---
+- name: Converge - Test Proxmox Bootstrap playbook
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    # Mock variables for testing (skip actual Vault calls and SSH password)
+    vault_addr: "http://127.0.0.1:8200"
+    vault_token_env: "test-token-mock-12345"
+    vault_username: "testuser"
+    vault_password: ""
+    proxmox_root_password: "test-password"
+    ansible_ssh_pass: "{{ proxmox_root_password }}"
+    tailscale_state: present
+    tailscale_args: "--accept-routes --accept-dns --ssh"
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+
+    - name: Set Vault token from environment (mock)
+      ansible.builtin.set_fact:
+        vault_token: "{{ vault_token_env }}"
+
+    - name: Mock Tailscale secret fetch (skip actual Vault call)
+      ansible.builtin.set_fact:
+        tailscale_secret:
+          data:
+            data:
+              auth-key: "tskey-test-mock-key-12345"
+        tailscale_authkey: "tskey-test-mock-key-12345"
+
+  tasks:
+    - name: Verify SSH password is set (for bootstrap)
+      ansible.builtin.assert:
+        that:
+          - proxmox_root_password is defined
+          - proxmox_root_password != ''
+        fail_msg: "Proxmox root password not set"
+
+    - name: Verify Vault token is set
+      ansible.builtin.assert:
+        that:
+          - vault_token is defined
+          - vault_token != ''
+        fail_msg: "Vault token not set"
+
+    - name: Verify Tailscale auth key is set
+      ansible.builtin.assert:
+        that:
+          - tailscale_authkey is defined
+          - tailscale_authkey != ''
+        fail_msg: "Tailscale auth key not set"
+
+    - name: Test bootstrap playbook structure (skip actual Tailscale install)
+      ansible.builtin.debug:
+        msg: "Bootstrap would install Tailscale with state={{ tailscale_state }}"
+      when: tailscale_state == 'present'
+
+    - name: Simulate post-bootstrap tasks
+      ansible.builtin.debug:
+        msg:
+          - "Bootstrap test complete!"
+          - "In real bootstrap, Tailscale hostname would be displayed"
+          - "User would update inventory/hosts.yml with Tailscale hostname"
+

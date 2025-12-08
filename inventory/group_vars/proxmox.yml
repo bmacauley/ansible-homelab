@@ -1,0 +1,28 @@
+---
+# Proxmox group variables
+
+# Tailscale configuration
+# Get your auth key from: https://login.tailscale.com/admin/settings/keys
+# IMPORTANT: Store the actual auth key in an Ansible Vault encrypted file
+# Vault configuration
+# The playbook will prompt for username/password and fetch the token automatically.
+# Alternatively, set VAULT_TOKEN in env to skip userpass auth.
+
+# Tailscale state: 'present' to install/configure, 'absent' to uninstall
+tailscale_state: present
+
+# Tailscale arguments
+# Common options:
+#   --accept-routes: Accept subnet routes advertised by other nodes
+#   --accept-dns: Accept DNS configuration from the admin panel
+#   --advertise-exit-node: Offer to be an exit node for the tailnet
+#   --advertise-routes=<routes>: Advertise specific routes (e.g., "192.168.1.0/24,192.168.2.0/24")
+#   --ssh: Enable Tailscale SSH
+tailscale_args: "--accept-routes --accept-dns --ssh"
+
+# Optional: Set a custom hostname for the Tailscale node
+# If not set, it will use the system hostname
+# tailscale_hostname: "{{ inventory_hostname }}"
+
+# Optional: Tailscale state directory
+# tailscale_state_directory: "/var/lib/tailscale"
