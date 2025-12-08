@@ -35,7 +35,7 @@
         vault_token: "{{ vault_token_env }}"
       when: vault_token_env != ''
       tags:
-        - always
+        - tailscale
 
     - name: Authenticate to Vault with userpass and get token
       ansible.builtin.command: >
@@ -52,26 +52,26 @@
       changed_when: false
       when: vault_token_env == '' and vault_password != ''
       tags:
-        - always
+        - tailscale
 
     - name: Set Vault token from userpass login
       ansible.builtin.set_fact:
         vault_token: "{{ (vault_login_result.stdout | from_json).token }}"
       when: vault_token_env == '' and vault_password != '' and vault_login_result is defined
       tags:
-        - always
+        - tailscale
 
     - name: Debug - Test Vault connection
       ansible.builtin.debug:
         msg:
           - "Vault addr: {{ vault_addr }}"
-          - "Token set: {{ 'yes' if vault_token else 'no' }}"
-          - "Token length: {{ vault_token | length if vault_token else 0 }}"
+          - "Token set: {{ 'yes' if vault_token | default('') else 'no' }}"
+          - "Token length: {{ vault_token | default('') | length }}"
       delegate_to: localhost
       become: false
       run_once: true
       tags:
-        - always
+        - tailscale
 
     - name: Fetch Tailscale auth key from Vault KV v2
       community.hashi_vault.vault_kv2_get:
@@ -85,19 +85,21 @@
       become: false
       run_once: true
       tags:
-        - always
+        - tailscale
 
     - name: Set tailscale_authkey fact
       ansible.builtin.set_fact:
         tailscale_authkey: "{{ tailscale_secret.data.data['auth-key'] }}"
       when: tailscale_secret is defined and tailscale_secret.data is defined
       tags:
-        - always
+        - tailscale
 
   roles:
     - role: artis3n.tailscale.machine
       vars:
         state: "{{ tailscale_state | default('present') }}"
+      tags:
+        - tailscale
     - role: mdns
       tags:
         - mdns

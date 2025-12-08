@@ -1,42 +1,129 @@
-.PHONY: help bootstrap proxmox install-collections tailscale-uninstall tailscale-reinstall test test-proxmox test-proxmox-bootstrap test-all test-verbose test-destroy
+#---------------------------
+# Makefile
+#---------------------------
+SHELL := $(shell which bash)
+.DEFAULT_GOAL := help
 
-help: ## Show this help message
-	@echo 'Usage: make [target]'
+# Default values
+PLAYBOOK ?= proxmox
+SCENARIO ?= proxmox
+VERBOSE ?=
+EXTRA_ARGS ?=
+
+# Handle TAGS variable
+ifdef TAGS
+TAGS_ARG = --tags $(TAGS)
+else
+TAGS_ARG =
+endif
+
+#-------------------------------------------------------------
+# Usage:
+#
+# make <playbook> [modifiers] <action>
+#
+# Examples:
+#   make proxmox run              - Run proxmox playbook
+#   make proxmox run TAGS=mdns    - Run mdns role only
+#   make proxmox run TAGS=tailscale - Run tailscale only
+#   make proxmox verbose run      - Run with -vvv
+#   make proxmox_bootstrap run    - Run bootstrap playbook
+#   make install deps             - Install Ansible collections
+#-------------------------------------------------------------
+
+.PHONY: help
+help: ## Show help
+	@echo 'Usage: make <playbook> [modifiers] <action> [VARS]'
 	@echo ''
-	@echo 'Targets:'
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+	@echo 'Playbooks:'
+	@echo '  proxmox              Select proxmox playbook'
+	@echo '  proxmox_bootstrap    Select proxmox_bootstrap playbook'
+	@echo ''
+	@echo 'Actions:'
+	@echo '  run                  Run the selected playbook'
+	@echo '  test                 Run molecule tests for selected playbook'
+	@echo '  destroy              Destroy molecule test environment'
+	@echo ''
+	@echo 'Modifiers (place before action):'
+	@echo '  verbose              Add -vvv to ansible-playbook'
+	@echo '  check                Run in check mode (dry-run)'
+	@echo ''
+	@echo 'Variables:'
+	@echo '  TAGS=<tag>           Run with --tags <tag>'
+	@echo '  EXTRA_ARGS=<args>    Pass extra args to ansible-playbook'
+	@echo ''
+	@echo 'Utilities:'
+	@echo '  make install deps    Install Ansible collections'
+	@echo '  make tests           Run all molecule tests'
+	@echo '  make clean           Destroy all molecule environments'
+	@echo ''
+	@echo 'Examples:'
+	@echo '  make proxmox run'
+	@echo '  make proxmox verbose run'
+	@echo '  make proxmox run TAGS=mdns'
+	@echo '  make proxmox run TAGS=tailscale'
+	@echo '  make proxmox_bootstrap run'
+	@echo '  make proxmox_bootstrap test'
 
-bootstrap: ## Bootstrap new hosts with Tailscale (via IP address)
-	uv run ansible-playbook playbooks/proxmox_bootstrap.yml
+# ----------------------------------------------------------------
+# Playbook selectors (set PLAYBOOK and SCENARIO variables)
+# ----------------------------------------------------------------
+.PHONY: proxmox proxmox_bootstrap
 
-proxmox: ## Run the Proxmox playbook (via Tailscale)
-	uv run ansible-playbook playbooks/proxmox.yml
+proxmox: ## Select proxmox playbook
+	$(eval PLAYBOOK = proxmox)
+	$(eval SCENARIO = proxmox)
 
-install-collections: ## Install required Ansible collections
+proxmox_bootstrap: ## Select proxmox_bootstrap playbook
+	$(eval PLAYBOOK = proxmox_bootstrap)
+	$(eval SCENARIO = proxmox_bootstrap)
+
+# ----------------------------------------------------------------
+# Modifiers (set flags) - place BEFORE action in command
+# ----------------------------------------------------------------
+.PHONY: verbose check
+
+verbose: ## Add verbose output
+	$(eval VERBOSE = -vvv)
+
+check: ## Run in check mode (dry-run)
+	$(eval EXTRA_ARGS += --check)
+
+# ----------------------------------------------------------------
+# Actions
+# ----------------------------------------------------------------
+.PHONY: run test destroy
+
+run: ## Run the selected playbook
+	uv run ansible-playbook playbooks/$(PLAYBOOK).yml $(VERBOSE) $(TAGS_ARG) $(EXTRA_ARGS)
+
+test: ## Run molecule tests for selected scenario
+	uv run molecule test -s $(SCENARIO)
+
+destroy: ## Destroy molecule test environment
+	uv run molecule destroy -s $(SCENARIO)
+
+# ----------------------------------------------------------------
+# Utility targets
+# ----------------------------------------------------------------
+.PHONY: install deps tests clean
+
+install: ## Utility selector
+	@:
+
+deps: ## Install Ansible collections
 	uv run ansible-galaxy collection install -r requirements.yml
 
-tailscale-uninstall: ## Uninstall Tailscale from Proxmox hosts
-	uv run ansible-playbook playbooks/proxmox.yml -e tailscale_state=absent
-
-tailscale-reinstall: ## Reinstall Tailscale on Proxmox hosts
-	uv run ansible-playbook playbooks/proxmox.yml -e tailscale_state=present
-
-test: test-all ## Run all Molecule tests (alias)
-
-test-proxmox: ## Run Molecule tests for proxmox scenario
-	uv run molecule test -s proxmox
-
-test-proxmox-bootstrap: ## Run Molecule tests for proxmox_bootstrap scenario
-	uv run molecule test -s proxmox_bootstrap
-
-test-all: ## Run all Molecule test scenarios
+tests: ## Run ALL molecule tests (both scenarios)
 	uv run molecule test -s proxmox
 	uv run molecule test -s proxmox_bootstrap
 
-test-verbose: ## Run Molecule tests with verbose output
-	uv run molecule test -s proxmox --debug
+clean: ## Destroy all molecule environments
+	uv run molecule destroy -s proxmox || true
+	uv run molecule destroy -s proxmox_bootstrap || true
 
-test-destroy: ## Destroy all Molecule test environments
-	uv run molecule destroy -s proxmox
-	uv run molecule destroy -s proxmox_bootstrap
-
+# ----------------------------------------------------------------
+# Catch-all (prevents "No rule to make target" errors)
+# ----------------------------------------------------------------
+%:
+	@:
