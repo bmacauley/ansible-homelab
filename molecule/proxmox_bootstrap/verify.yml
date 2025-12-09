@@ -1,5 +1,5 @@
 ---
-- name: Verify bootstrap playbook execution
+- name: Verify Proxmox Bootstrap
   hosts: all
   gather_facts: false
   become: true
@@ -9,19 +9,39 @@
       register: python_version
       changed_when: false
 
-    - name: Display Python version
-      ansible.builtin.debug:
-        msg: "Python version: {{ python_version.stdout }}"
+    - name: Assert Python is available
+      ansible.builtin.assert:
+        that:
+          - python_version.rc == 0
+        fail_msg: "Python3 should be installed"
 
-    - name: Verify apt is working
-      ansible.builtin.command: apt --version
-      register: apt_version
+    - name: Verify apt is functional (install a small package)
+      ansible.builtin.apt:
+        name: file
+        state: present
+      register: apt_check
+
+    - name: Assert apt is working
+      ansible.builtin.assert:
+        that:
+          - apt_check is success
+        fail_msg: "apt should be functional (no broken repos)"
+
+    - name: Check enterprise repo is disabled
+      ansible.builtin.command: cat /etc/apt/sources.list.d/pve-enterprise.list
+      register: enterprise_content
       changed_when: false
+      failed_when: false
 
-    - name: Display apt version
-      ansible.builtin.debug:
-        msg: "APT version: {{ apt_version.stdout_lines[0] }}"
+    - name: Assert enterprise repo is disabled or absent
+      ansible.builtin.assert:
+        that:
+          - enterprise_content.rc != 0 or 'Disabled' in enterprise_content.stdout or 'deb https://enterprise' not in enterprise_content.stdout
+        fail_msg: "Enterprise repo should be disabled"
 
-    - name: Verify bootstrap test completed successfully
+    - name: Display verification results
       ansible.builtin.debug:
-        msg: "All bootstrap verification checks passed"
+        msg:
+          - "Python: {{ python_version.stdout }}"
+          - "APT status: OK"
+          - "Enterprise repo: Disabled"

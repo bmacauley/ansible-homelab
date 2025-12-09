@@ -53,13 +53,15 @@
         - always
 
     - name: Authenticate to Vault with userpass and get token
-      ansible.builtin.command: >
-        python3 -c "
-        import hvac, json, sys;
-        client = hvac.Client(url='{{ vault_addr }}');
-        login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}');
-        print(json.dumps({'token': login['auth']['client_token']}))
-        "
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import hvac, json, sys
+            client = hvac.Client(url='{{ vault_addr }}')
+            login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}')
+            print(json.dumps({'token': login['auth']['client_token']}))
       register: vault_login_result
       delegate_to: localhost
       become: false
@@ -106,6 +108,41 @@
       ansible.builtin.set_fact:
         tailscale_authkey: "{{ tailscale_secret.data.data['auth-key'] }}"
       when: tailscale_secret is defined and tailscale_secret.data is defined
+      tags:
+        - always
+
+    - name: Check for enterprise .sources files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: enterprise_sources
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.sources
+        - /etc/apt/sources.list.d/ceph.sources
+      tags:
+        - always
+
+    - name: Disable enterprise .sources files by renaming
+      ansible.builtin.command:
+        cmd: mv {{ item.item }} {{ item.item }}.disabled
+        creates: "{{ item.item }}.disabled"
+        removes: "{{ item.item }}"
+      loop: "{{ enterprise_sources.results }}"
+      when: item.stat.exists
+      tags:
+        - always
+
+    - name: Add Proxmox no-subscription repository
+      ansible.builtin.apt_repository:
+        repo: "deb http://download.proxmox.com/debian/pve {{ ansible_facts['distribution_release'] }} pve-no-subscription"
+        filename: pve-no-subscription
+        state: present
+        update_cache: false
+      tags:
+        - always
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
       tags:
         - always
 

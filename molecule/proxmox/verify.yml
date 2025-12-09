@@ -1,5 +1,5 @@
 ---
-- name: Verify playbook execution
+- name: Verify Proxmox playbook
   hosts: all
   gather_facts: false
   become: true
@@ -9,19 +9,38 @@
       register: python_version
       changed_when: false
 
-    - name: Display Python version
-      ansible.builtin.debug:
-        msg: "Python version: {{ python_version.stdout }}"
+    - name: Assert Python is available
+      ansible.builtin.assert:
+        that:
+          - python_version.rc == 0
+        fail_msg: "Python3 should be installed"
 
-    - name: Verify apt is working
-      ansible.builtin.command: apt --version
-      register: apt_version
+    - name: Verify apt is functional (install a small package)
+      ansible.builtin.apt:
+        name: file
+        state: present
+      register: apt_check
+
+    - name: Assert apt is working
+      ansible.builtin.assert:
+        that:
+          - apt_check is success
+        fail_msg: "apt should be functional"
+
+    - name: Verify avahi-daemon is installed
+      ansible.builtin.command: which avahi-daemon
+      register: avahi_installed
       changed_when: false
 
-    - name: Display apt version
-      ansible.builtin.debug:
-        msg: "APT version: {{ apt_version.stdout_lines[0] }}"
+    - name: Assert avahi is installed
+      ansible.builtin.assert:
+        that:
+          - avahi_installed.rc == 0
+        fail_msg: "avahi-daemon should be installed for mDNS"
 
-    - name: Verify test completed successfully
+    - name: Display verification results
       ansible.builtin.debug:
-        msg: "All verification checks passed"
+        msg:
+          - "Python: {{ python_version.stdout }}"
+          - "APT status: OK"
+          - "Avahi: Installed"

@@ -16,3 +16,6 @@ proxmox_iso_builder_packages:
 
 # Working directory for ISO builds
 proxmox_iso_builder_workdir: "/var/lib/vz/template/iso"
+
+# System timezone (e.g., "Europe/London", "America/New_York")
+proxmox_iso_builder_timezone: "Europe/London"

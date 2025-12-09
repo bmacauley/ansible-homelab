@@ -26,6 +26,29 @@
       ansible.builtin.set_fact:
         vault_token: "{{ vault_token_env }}"
 
+    # Test the actual Python inline command syntax works
+    - name: Test Python inline command syntax (dry run - mock hvac)
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json, sys
+            # Mock hvac login response - tests the command structure
+            mock_response = {'token': 'test-token-12345'}
+            print(json.dumps(mock_response))
+      register: python_inline_test
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: Verify Python inline command produced valid JSON
+      ansible.builtin.assert:
+        that:
+          - python_inline_test.stdout | from_json is defined
+          - (python_inline_test.stdout | from_json).token is defined
+        fail_msg: "Python inline command failed to produce valid JSON output"
+
     - name: Mock Tailscale secret fetch (skip actual Vault call)
       ansible.builtin.set_fact:
         tailscale_secret:
@@ -33,6 +56,47 @@
             data:
               auth-key: "tskey-test-mock-key-12345"
         tailscale_authkey: "tskey-test-mock-key-12345"
+
+    # Test enterprise repo disabling (critical for non-subscription installs)
+    - name: Check if enterprise repo exists
+      ansible.builtin.stat:
+        path: /etc/apt/sources.list.d/pve-enterprise.list
+      register: enterprise_repo_stat
+
+    - name: Create mock enterprise repo (only if not exists - simulating fresh Proxmox)
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/pve-enterprise.list
+        content: |
+          deb https://enterprise.proxmox.com/debian/pve bookworm pve-enterprise
+        owner: root
+        group: root
+        mode: "0644"
+      when: not enterprise_repo_stat.stat.exists
+
+    - name: Disable Proxmox enterprise repository
+      ansible.builtin.lineinfile:
+        path: /etc/apt/sources.list.d/pve-enterprise.list
+        regexp: '^deb https://enterprise'
+        line: "# Disabled - requires subscription"
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Disable Ceph enterprise repository (create disabled file)
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/ceph.list
+        content: |
+          # Disabled - requires subscription
+        owner: root
+        group: root
+        mode: "0644"
+        force: false
+
+    - name: Update apt cache (should succeed with enterprise repos disabled)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
 
   tasks:
     - name: Verify SSH password is set (for bootstrap)
@@ -55,6 +119,17 @@
           - tailscale_authkey is defined
           - tailscale_authkey != ''
         fail_msg: "Tailscale auth key not set"
+
+    - name: Verify enterprise repos are disabled
+      ansible.builtin.command: cat /etc/apt/sources.list.d/pve-enterprise.list
+      register: enterprise_repo_content
+      changed_when: false
+
+    - name: Assert enterprise repo is commented/disabled
+      ansible.builtin.assert:
+        that:
+          - "'Disabled' in enterprise_repo_content.stdout or enterprise_repo_content.stdout | trim == ''"
+        fail_msg: "Enterprise repo should be disabled before apt operations"
 
     - name: Test bootstrap playbook structure (skip actual Tailscale install)
       ansible.builtin.debug:

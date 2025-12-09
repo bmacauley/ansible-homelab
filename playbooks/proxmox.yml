@@ -38,13 +38,15 @@
         - tailscale
 
     - name: Authenticate to Vault with userpass and get token
-      ansible.builtin.command: >
-        python3 -c "
-        import hvac, json, sys;
-        client = hvac.Client(url='{{ vault_addr }}');
-        login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}');
-        print(json.dumps({'token': login['auth']['client_token']}))
-        "
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import hvac, json, sys
+            client = hvac.Client(url='{{ vault_addr }}')
+            login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}')
+            print(json.dumps({'token': login['auth']['client_token']}))
       register: vault_login_result
       delegate_to: localhost
       become: false

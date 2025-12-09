@@ -1,6 +1,11 @@
 ---
 # proxmox_iso_builder role tasks
 
+- name: Set system timezone
+  ansible.builtin.command: timedatectl set-timezone {{ proxmox_iso_builder_timezone }}
+  changed_when: false
+  when: proxmox_iso_builder_timezone is defined and proxmox_iso_builder_timezone | length > 0
+
 - name: Check if enterprise repo exists
   ansible.builtin.stat:
     path: /etc/apt/sources.list.d/pve-enterprise.list
