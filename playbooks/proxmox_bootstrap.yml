@@ -4,9 +4,9 @@
 #
 # Usage:
 #   1. Set the IP address in inventory/hosts.yml under proxmox_bootstrap
-#   2. Set VAULT_TOKEN env var or enter credentials when prompted
-#   3. Run: make bootstrap
-#   4. After success, use: make proxmox (via Tailscale)
+#   2. Enter credentials when prompted (fresh Vault token each run)
+#   3. Run: make proxmox_bootstrap run
+#   4. After success, use: make proxmox run (via Tailscale)
 
 - name: Bootstrap Proxmox hosts with Tailscale
   hosts: proxmox_bootstrap
@@ -18,20 +18,17 @@
       prompt: "Proxmox root password (for SSH access)"
       private: true
     - name: vault_username
-      prompt: "Vault username (press Enter to use VAULT_TOKEN if set)"
+      prompt: "Vault username"
       default: "{{ lookup('env', 'VAULT_USERNAME') | default('bmacauley', true) }}"
       private: false
     - name: vault_password
-      prompt: "Vault password (press Enter to skip if VAULT_TOKEN is set)"
+      prompt: "Vault password"
       private: true
-      default: ""
 
   vars:
     ansible_ssh_pass: "{{ proxmox_root_password }}"
     vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://127.0.0.1:8200', true) }}"
-    vault_token_env: "{{ lookup('env', 'VAULT_TOKEN') | default('', true) }}"
     tailscale_state: present
-    tailscale_args: "--accept-routes --accept-dns --ssh"
 
   pre_tasks:
     - name: Ensure Python exists
@@ -45,14 +42,7 @@
       tags:
         - always
 
-    - name: Set Vault token from environment
-      ansible.builtin.set_fact:
-        vault_token: "{{ vault_token_env }}"
-      when: vault_token_env != ''
-      tags:
-        - always
-
-    - name: Authenticate to Vault with userpass and get token
+    - name: Authenticate to Vault with userpass (fresh token each run)
       ansible.builtin.command:
         argv:
           - python3
@@ -67,14 +57,12 @@
       become: false
       run_once: true
       changed_when: false
-      when: vault_token_env == '' and vault_password != ''
       tags:
         - always
 
     - name: Set Vault token from userpass login
       ansible.builtin.set_fact:
         vault_token: "{{ (vault_login_result.stdout | from_json).token }}"
-      when: vault_token_env == '' and vault_password != '' and vault_login_result is defined
       tags:
         - always
 
@@ -173,4 +161,4 @@
           - "Bootstrap complete!"
           - "Tailscale hostname: {{ (tailscale_json.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
           - "Update inventory/hosts.yml with the Tailscale hostname"
-          - "Then use: make proxmox"
+          - "Then use: make proxmox run"
