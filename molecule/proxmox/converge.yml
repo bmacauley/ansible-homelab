@@ -4,16 +4,14 @@
   gather_facts: true
   become: true
   vars:
-    # Mock Vault variables for testing (skip actual Vault calls)
-    vault_addr: "http://127.0.0.1:8200"
-    vault_token_env: "test-token-mock-12345"
-    vault_username: "testuser"
-    vault_password: ""
-    tailscale_state: present
-    tailscale_args: "--accept-routes --accept-dns --ssh"
     # mDNS settings
     mdns_hostname: "proxmox-test"
     mdns_interface: ""
+    # ISO builder settings (skip proxmox-specific packages in test)
+    proxmox_iso_builder_packages:
+      - xorriso
+      - isolinux
+    proxmox_iso_builder_skip_version_check: true
 
   pre_tasks:
     - name: Ensure Python exists
@@ -23,68 +21,7 @@
     - name: Gather facts after Python installation
       ansible.builtin.setup:
 
-    - name: Set Vault token from environment (mock)
-      ansible.builtin.set_fact:
-        vault_token: "{{ vault_token_env }}"
-
-    # Test the actual Python inline command syntax works
-    - name: Test Python inline command syntax (dry run - mock hvac)
-      ansible.builtin.command:
-        argv:
-          - python3
-          - -c
-          - |
-            import json, sys
-            # Mock hvac login response - tests the command structure
-            mock_response = {'token': 'test-token-12345'}
-            print(json.dumps(mock_response))
-      register: python_inline_test
-      delegate_to: localhost
-      become: false
-      changed_when: false
-
-    - name: Verify Python inline command produced valid JSON
-      ansible.builtin.assert:
-        that:
-          - python_inline_test.stdout | from_json is defined
-          - (python_inline_test.stdout | from_json).token is defined
-        fail_msg: "Python inline command failed to produce valid JSON output"
-
-    - name: Mock Tailscale secret fetch (skip actual Vault call)
-      ansible.builtin.set_fact:
-        tailscale_secret:
-          data:
-            data:
-              auth-key: "tskey-test-mock-key-12345"
-        tailscale_authkey: "tskey-test-mock-key-12345"
-
   tasks:
-    - name: Verify Vault token is set
-      ansible.builtin.assert:
-        that:
-          - vault_token is defined
-          - vault_token != ''
-        fail_msg: "Vault token not set"
-
-    - name: Verify Tailscale auth key is set
-      ansible.builtin.assert:
-        that:
-          - tailscale_authkey is defined
-          - tailscale_authkey != ''
-        fail_msg: "Tailscale auth key not set"
-
-    - name: Test playbook structure (skip actual Tailscale install in test)
-      ansible.builtin.debug:
-        msg: "Playbook would install Tailscale with state={{ tailscale_state }}"
-      when: tailscale_state == 'present'
-
-    - name: Test uninstall scenario
-      ansible.builtin.debug:
-        msg: "Playbook would uninstall Tailscale"
-      when: tailscale_state == 'absent'
-      vars:
-        tailscale_state: absent
-
     # Test mDNS role tasks
     - name: Install avahi packages (mDNS test)
       ansible.builtin.apt:
@@ -106,10 +43,28 @@
           - avahi_check.rc == 0
         fail_msg: "avahi-daemon should be installed for mDNS"
 
+    # Test ISO builder tasks (simplified - skip proxmox-specific tools)
+    - name: Install ISO building tools
+      ansible.builtin.apt:
+        name: "{{ proxmox_iso_builder_packages }}"
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Verify xorriso is installed
+      ansible.builtin.command: which xorriso
+      register: xorriso_check
+      changed_when: false
+
+    - name: Assert xorriso is installed
+      ansible.builtin.assert:
+        that:
+          - xorriso_check.rc == 0
+        fail_msg: "xorriso should be installed for ISO building"
+
     - name: Display test summary
       ansible.builtin.debug:
         msg:
           - "Proxmox playbook tests complete!"
-          - "Python inline commands: OK"
-          - "Variable assertions: OK"
           - "mDNS packages: OK"
+          - "ISO builder tools: OK"

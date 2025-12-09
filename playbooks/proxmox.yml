@@ -1,20 +1,9 @@
 ---
+# Configure Proxmox hosts (assumes Tailscale already installed via bootstrap)
 - name: Configure Proxmox hosts
   hosts: proxmox
   gather_facts: true
   become: true
-
-  vars_prompt:
-    - name: vault_username
-      prompt: "Vault username"
-      default: "{{ lookup('env', 'VAULT_USERNAME') | default('bmacauley', true) }}"
-      private: false
-    - name: vault_password
-      prompt: "Vault password"
-      private: true
-
-  vars:
-    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://127.0.0.1:8200', true) }}"
 
   pre_tasks:
     - name: Ensure Python exists
@@ -28,69 +17,7 @@
       tags:
         - always
 
-    - name: Authenticate to Vault with userpass (fresh token each run)
-      ansible.builtin.command:
-        argv:
-          - python3
-          - -c
-          - |
-            import hvac, json, sys
-            client = hvac.Client(url='{{ vault_addr }}')
-            login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}')
-            print(json.dumps({'token': login['auth']['client_token']}))
-      register: vault_login_result
-      delegate_to: localhost
-      become: false
-      run_once: true
-      changed_when: false
-      tags:
-        - tailscale
-
-    - name: Set Vault token from userpass login
-      ansible.builtin.set_fact:
-        vault_token: "{{ (vault_login_result.stdout | from_json).token }}"
-      tags:
-        - tailscale
-
-    - name: Debug - Test Vault connection
-      ansible.builtin.debug:
-        msg:
-          - "Vault addr: {{ vault_addr }}"
-          - "Token set: {{ 'yes' if vault_token | default('') else 'no' }}"
-          - "Token length: {{ vault_token | default('') | length }}"
-      delegate_to: localhost
-      become: false
-      run_once: true
-      tags:
-        - tailscale
-
-    - name: Fetch Tailscale auth key from Vault KV v2
-      community.hashi_vault.vault_kv2_get:
-        url: "{{ vault_addr }}"
-        token: "{{ vault_token }}"
-        mount_point: "kv"
-        engine_mount_point: "kv"
-        path: "tailscale"
-      register: tailscale_secret
-      delegate_to: localhost
-      become: false
-      run_once: true
-      tags:
-        - tailscale
-
-    - name: Set tailscale_authkey fact
-      ansible.builtin.set_fact:
-        tailscale_authkey: "{{ tailscale_secret.data.data['auth-key'] }}"
-      when: tailscale_secret is defined and tailscale_secret.data is defined
-      tags:
-        - tailscale
-
   roles:
-    - role: artis3n.tailscale.machine
-      vars:
-        state: "{{ tailscale_state | default('present') }}"
-      tags:
-        - tailscale
     - role: mdns
       tags:
         - mdns

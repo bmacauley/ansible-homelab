@@ -38,9 +38,21 @@
           - avahi_installed.rc == 0
         fail_msg: "avahi-daemon should be installed for mDNS"
 
+    - name: Verify xorriso is installed
+      ansible.builtin.command: which xorriso
+      register: xorriso_installed
+      changed_when: false
+
+    - name: Assert xorriso is installed
+      ansible.builtin.assert:
+        that:
+          - xorriso_installed.rc == 0
+        fail_msg: "xorriso should be installed for ISO building"
+
     - name: Display verification results
       ansible.builtin.debug:
         msg:
           - "Python: {{ python_version.stdout }}"
           - "APT status: OK"
           - "Avahi: Installed"
+          - "xorriso: Installed"
