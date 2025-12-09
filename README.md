@@ -42,13 +42,14 @@ make proxmox run
 │       └── proxmox_bootstrap.yml
 ├── playbooks/
 │   ├── proxmox.yml            # Main Proxmox configuration
-│   ├── proxmox_bootstrap.yml  # Bootstrap via IP (before Tailscale)
-│   └── proxmox_firstboot.yml  # Ansible-pull first boot
+│   └── proxmox_bootstrap.yml  # Bootstrap via IP (before Tailscale)
 ├── roles/
-│   └── mdns/                  # Avahi mDNS configuration
+│   ├── mdns/                  # Avahi mDNS configuration
+│   └── proxmox_iso_builder/   # Proxmox ISO building tools
 ├── molecule/                  # Molecule test scenarios
 │   ├── proxmox/
-│   └── proxmox_bootstrap/
+│   ├── proxmox_bootstrap/
+│   └── proxmox_iso_builder/
 └── Makefile                   # Task runner
 ```
 
@@ -100,10 +101,16 @@ The playbooks fetch Tailscale auth keys from HashiCorp Vault.
 
 ### Authentication
 
-Set `VAULT_TOKEN` environment variable, or enter credentials when prompted:
+Playbooks always prompt for Vault username/password and get a fresh token each run:
 ```bash
-export VAULT_TOKEN="your-token"
 make proxmox run
+# Vault username [bmacauley]: 
+# Vault password: 
+```
+
+Set `VAULT_USERNAME` to change the default:
+```bash
+export VAULT_USERNAME="myuser"
 ```
 
 ### Secret Path
@@ -134,6 +141,20 @@ Configures Avahi for mDNS/Bonjour discovery.
 # After running, access via:
 ssh root@proxmox.local
 https://proxmox.local:8006
+```
+
+### proxmox_iso_builder
+
+Prepares Proxmox for building custom auto-install ISOs.
+
+**What it does:**
+- Sets system timezone
+- Disables enterprise repos (no subscription required)
+- Installs `xorriso`, `isolinux`, `proxmox-auto-install-assistant`
+
+**Usage:**
+```bash
+make proxmox run TAGS=iso-builder
 ```
 
 ## Inventory
