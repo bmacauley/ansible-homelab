@@ -7,11 +7,14 @@
     # mDNS settings
     mdns_hostname: "proxmox-test"
     mdns_interface: ""
-    # ISO builder settings (skip proxmox-specific packages in test)
-    proxmox_iso_builder_packages:
+    # Proxmox role settings (skip proxmox-specific packages in test)
+    proxmox_iso_packages:
       - xorriso
       - isolinux
-    proxmox_iso_builder_skip_version_check: true
+    proxmox_iso_skip_version_check: true
+    proxmox_ssl_enabled: false  # Skip SSL in Docker test
+    proxmox_disable_enterprise_repo: false  # No enterprise repos in Docker
+    proxmox_enable_no_subscription_repo: false  # Not a real Proxmox
 
   pre_tasks:
     - name: Ensure Python exists
@@ -46,7 +49,7 @@
     # Test ISO builder tasks (simplified - skip proxmox-specific tools)
     - name: Install ISO building tools
       ansible.builtin.apt:
-        name: "{{ proxmox_iso_builder_packages }}"
+        name: "{{ proxmox_iso_packages }}"
         state: present
         update_cache: true
         cache_valid_time: 3600

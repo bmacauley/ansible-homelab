@@ -8,7 +8,8 @@
       "Bash(uv init:*)",
       "Bash(echo:*)",
       "Bash(uv --version:*)",
-      "Bash(/opt/homebrew/bin/mise exec:*)"
+      "Bash(/opt/homebrew/bin/mise exec:*)",
+      "Bash(make lint:*)"
     ],
     "deny": [],
     "ask": []

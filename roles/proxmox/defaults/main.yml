@@ -1,0 +1,44 @@
+---
+# Proxmox role defaults
+
+# System timezone (e.g., "Europe/London", "America/New_York")
+proxmox_timezone: "Europe/London"
+
+# System locale
+proxmox_locale: "en_GB.UTF-8"
+
+# Proxmox version codename (bookworm for PVE 8+, trixie for PVE 9)
+proxmox_codename: "{{ ansible_facts['distribution_release'] }}"
+
+# Repository configuration
+proxmox_disable_enterprise_repo: true
+proxmox_enable_no_subscription_repo: true
+
+# ISO builder configuration
+proxmox_iso_packages:
+  - xorriso
+  - isolinux
+  - proxmox-auto-install-assistant
+proxmox_iso_workdir: "/var/lib/vz/template/iso"
+proxmox_iso_skip_version_check: false
+
+# LXC template configuration
+proxmox_lxc_templates_enabled: true
+proxmox_lxc_templates_storage: "local"  # Storage location for templates
+proxmox_lxc_templates_update_cache: true  # Update pveam template list before downloading
+proxmox_lxc_templates:
+  # List of templates to download (use pveam available to see options)
+  # Examples:
+  #   - debian-12-standard_12.7-1_amd64.tar.zst
+  #   - ubuntu-24.04-standard_24.04-2_amd64.tar.zst
+  #   - alpine-3.20-default_20240908_amd64.tar.xz
+  - ubuntu-24.04-standard_24.04-2_amd64.tar.zst
+  - debian-13-standard_13.1-2_amd64.tar.zst
+  - alpine-3.22-default_20250617_amd64.tar.xz
+  # []
+
+# SSL/HTTPS configuration (uses pvenode cert set per Tailscale docs)
+# https://tailscale.com/kb/1133/proxmox
+proxmox_ssl_enabled: true
+proxmox_ssl_tailscale_hostname: ""  # Auto-detected if empty
+proxmox_ssl_auto_renew: true  # Setup cron job for cert renewal every 12 hours

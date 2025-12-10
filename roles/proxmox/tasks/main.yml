@@ -1,0 +1,327 @@
+---
+# Proxmox role tasks
+
+# === System Configuration ===
+- name: Set system timezone
+  ansible.builtin.command: timedatectl set-timezone {{ proxmox_timezone }}
+  changed_when: false
+  when: proxmox_timezone is defined and proxmox_timezone | length > 0
+  tags:
+    - proxmox
+    - timezone
+
+- name: Ensure locales package is installed
+  ansible.builtin.apt:
+    name: locales
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+    - proxmox
+    - locale
+
+- name: Generate locale
+  community.general.locale_gen:
+    name: "{{ proxmox_locale }}"
+    state: present
+  tags:
+    - proxmox
+    - locale
+
+- name: Set default locale
+  ansible.builtin.copy:
+    dest: /etc/default/locale
+    content: |
+      LANG={{ proxmox_locale }}
+      LC_ALL={{ proxmox_locale }}
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - proxmox
+    - locale
+
+# === Repository Configuration ===
+- name: Check for enterprise .sources files (PVE 9+)
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: proxmox_enterprise_sources
+  loop:
+    - /etc/apt/sources.list.d/pve-enterprise.sources
+    - /etc/apt/sources.list.d/ceph.sources
+  tags:
+    - proxmox
+    - repos
+
+- name: Disable enterprise .sources files by renaming
+  ansible.builtin.command:
+    cmd: mv {{ item.item }} {{ item.item }}.disabled
+    creates: "{{ item.item }}.disabled"
+    removes: "{{ item.item }}"
+  loop: "{{ proxmox_enterprise_sources.results }}"
+  when:
+    - proxmox_disable_enterprise_repo
+    - item.stat.exists
+  tags:
+    - proxmox
+    - repos
+
+- name: Check if enterprise .list repo exists
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list.d/pve-enterprise.list
+  register: proxmox_enterprise_list
+  tags:
+    - proxmox
+    - repos
+
+- name: Disable Proxmox enterprise .list repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/pve-enterprise.list
+    content: |
+      # Disabled - requires subscription
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - proxmox_disable_enterprise_repo
+    - proxmox_enterprise_list.stat.exists
+  notify: Update apt cache
+  tags:
+    - proxmox
+    - repos
+
+- name: Add Proxmox no-subscription repository
+  ansible.builtin.apt_repository:
+    repo: "deb http://download.proxmox.com/debian/pve {{ proxmox_codename }} pve-no-subscription"
+    filename: pve-no-subscription
+    state: present
+    update_cache: false
+  when: proxmox_enable_no_subscription_repo
+  notify: Update apt cache
+  tags:
+    - proxmox
+    - repos
+
+- name: Flush handlers to update apt cache
+  ansible.builtin.meta: flush_handlers
+
+# === ISO Builder ===
+- name: Install ISO building tools
+  ansible.builtin.apt:
+    name: "{{ proxmox_iso_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+    - proxmox
+    - iso-builder
+
+- name: Ensure ISO working directory exists
+  ansible.builtin.file:
+    path: "{{ proxmox_iso_workdir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags:
+    - proxmox
+    - iso-builder
+
+- name: Verify proxmox-auto-install-assistant is installed
+  ansible.builtin.command: proxmox-auto-install-assistant --version
+  register: proxmox_auto_install_version
+  changed_when: false
+  when: not proxmox_iso_skip_version_check
+  tags:
+    - proxmox
+    - iso-builder
+
+- name: Display proxmox-auto-install-assistant version
+  ansible.builtin.debug:
+    msg: "proxmox-auto-install-assistant version: {{ proxmox_auto_install_version.stdout }}"
+  when: not proxmox_iso_skip_version_check
+  tags:
+    - proxmox
+    - iso-builder
+
+# === LXC Templates ===
+- name: Update pveam template list
+  ansible.builtin.command: pveam update
+  changed_when: false
+  when:
+    - proxmox_lxc_templates_enabled
+    - proxmox_lxc_templates_update_cache
+  tags:
+    - proxmox
+    - lxc-templates
+
+- name: Get available templates
+  ansible.builtin.command: pveam available
+  register: proxmox_available_templates
+  changed_when: false
+  when:
+    - proxmox_lxc_templates_enabled
+    - proxmox_lxc_templates | length > 0
+  tags:
+    - proxmox
+    - lxc-templates
+
+- name: Get list of already downloaded templates
+  ansible.builtin.command: pveam list {{ proxmox_lxc_templates_storage }}
+  register: proxmox_downloaded_templates
+  changed_when: false
+  when:
+    - proxmox_lxc_templates_enabled
+    - proxmox_lxc_templates | length > 0
+  tags:
+    - proxmox
+    - lxc-templates
+
+- name: Download LXC templates
+  ansible.builtin.command: pveam download {{ proxmox_lxc_templates_storage }} {{ item }}
+  loop: "{{ proxmox_lxc_templates }}"
+  register: proxmox_template_download
+  changed_when: "'downloading' in proxmox_template_download.stdout | default('')"
+  when:
+    - proxmox_lxc_templates_enabled
+    - proxmox_lxc_templates | length > 0
+    - item not in proxmox_downloaded_templates.stdout
+    - item in proxmox_available_templates.stdout
+  tags:
+    - proxmox
+    - lxc-templates
+
+- name: Warn on unavailable templates
+  ansible.builtin.debug:
+    msg: "Template not available in pveam: {{ item }}"
+  loop: "{{ proxmox_lxc_templates }}"
+  when:
+    - proxmox_lxc_templates_enabled
+    - proxmox_lxc_templates | length > 0
+    - item not in proxmox_available_templates.stdout
+  tags:
+    - proxmox
+    - lxc-templates
+
+- name: Display downloaded LXC templates
+  ansible.builtin.command: pveam list {{ proxmox_lxc_templates_storage }}
+  register: proxmox_final_templates
+  changed_when: false
+  when:
+    - proxmox_lxc_templates_enabled
+    - proxmox_lxc_templates | length > 0
+  tags:
+    - proxmox
+    - lxc-templates
+
+- name: Show available LXC templates
+  ansible.builtin.debug:
+    msg: "{{ proxmox_final_templates.stdout_lines }}"
+  when:
+    - proxmox_lxc_templates_enabled
+    - proxmox_lxc_templates | length > 0
+    - proxmox_final_templates.stdout_lines is defined
+  tags:
+    - proxmox
+    - lxc-templates
+
+# === SSL/HTTPS Configuration ===
+# Based on: https://tailscale.com/kb/1133/proxmox
+
+- name: Install jq for Tailscale cert script
+  ansible.builtin.apt:
+    name: jq
+    state: present
+  when: proxmox_ssl_enabled
+  tags:
+    - proxmox
+    - ssl
+
+- name: Get Tailscale hostname
+  ansible.builtin.shell: set -o pipefail && tailscale status --json | jq -r '.Self.DNSName | .[:-1]'
+  args:
+    executable: /bin/bash
+  register: proxmox_tailscale_hostname_result
+  changed_when: false
+  when: proxmox_ssl_enabled and proxmox_ssl_tailscale_hostname == ""
+  tags:
+    - proxmox
+    - ssl
+
+- name: Set Tailscale hostname from config
+  ansible.builtin.set_fact:
+    proxmox_ssl_hostname: "{{ proxmox_ssl_tailscale_hostname }}"
+  when: proxmox_ssl_enabled and proxmox_ssl_tailscale_hostname != ""
+  tags:
+    - proxmox
+    - ssl
+
+- name: Set Tailscale hostname from status
+  ansible.builtin.set_fact:
+    proxmox_ssl_hostname: "{{ proxmox_tailscale_hostname_result.stdout }}"
+  when: proxmox_ssl_enabled and proxmox_ssl_tailscale_hostname == ""
+  tags:
+    - proxmox
+    - ssl
+
+- name: Generate Tailscale HTTPS certificate
+  ansible.builtin.command: tailscale cert {{ proxmox_ssl_hostname }}
+  args:
+    creates: /var/lib/tailscale/certs/{{ proxmox_ssl_hostname }}.crt
+  when: proxmox_ssl_enabled
+  tags:
+    - proxmox
+    - ssl
+
+- name: Install Tailscale cert to Proxmox
+  ansible.builtin.shell: |
+    pvenode cert set \
+      /var/lib/tailscale/certs/{{ proxmox_ssl_hostname }}.crt \
+      /var/lib/tailscale/certs/{{ proxmox_ssl_hostname }}.key \
+      --force --restart
+  register: proxmox_cert_install
+  changed_when: proxmox_cert_install.rc == 0
+  when: proxmox_ssl_enabled
+  tags:
+    - proxmox
+    - ssl
+
+- name: Create cert renewal script
+  ansible.builtin.copy:
+    dest: /usr/local/bin/proxmox-tailscale-cert-renew.sh
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      # Auto-generated by Ansible - Tailscale cert renewal for Proxmox
+      NAME="$(tailscale status --json | jq '.Self.DNSName | .[:-1]' -r)"
+      tailscale cert "${NAME}"
+      pvenode cert set "${NAME}.crt" "${NAME}.key" --force --restart
+  when: proxmox_ssl_enabled and proxmox_ssl_auto_renew
+  tags:
+    - proxmox
+    - ssl
+
+- name: Setup cron job for cert renewal
+  ansible.builtin.cron:
+    name: "Tailscale cert renewal for Proxmox"
+    minute: "0"
+    hour: "*/12"
+    job: "/usr/local/bin/proxmox-tailscale-cert-renew.sh"
+    user: root
+  when: proxmox_ssl_enabled and proxmox_ssl_auto_renew
+  tags:
+    - proxmox
+    - ssl
+
+- name: Display SSL configuration
+  ansible.builtin.debug:
+    msg:
+      - "Tailscale HTTPS configured for: {{ proxmox_ssl_hostname }}"
+      - "Access Proxmox at: https://{{ proxmox_ssl_hostname }}:8006"
+      - "Auto-renewal: {{ 'enabled (every 12 hours)' if proxmox_ssl_auto_renew else 'disabled' }}"
+  when: proxmox_ssl_enabled
+  tags:
+    - proxmox
+    - ssl

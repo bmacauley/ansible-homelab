@@ -18,12 +18,15 @@
         - always
 
   roles:
+    - role: proxmox
+      tags:
+        - proxmox
+        - ssl
+        - iso-builder
+        - repos
     - role: mdns
       tags:
         - mdns
-    - role: proxmox_iso_builder
-      tags:
-        - iso-builder
 
   post_tasks:
     - name: Validate Proxmox node uptime

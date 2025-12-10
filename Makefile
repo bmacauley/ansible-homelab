@@ -25,7 +25,7 @@ endif
 # Examples:
 #   make proxmox run              - Run proxmox playbook
 #   make proxmox run TAGS=mdns    - Run mdns role only
-#   make proxmox run TAGS=tailscale - Run tailscale only
+#   make proxmox run TAGS=ssl       - Run ssl config only
 #   make proxmox verbose run      - Run with -vvv
 #   make proxmox_bootstrap run    - Run bootstrap playbook
 #   make install deps             - Install Ansible collections
@@ -62,7 +62,7 @@ help: ## Show help
 	@echo '  make proxmox run'
 	@echo '  make proxmox verbose run'
 	@echo '  make proxmox run TAGS=mdns'
-	@echo '  make proxmox run TAGS=tailscale'
+	@echo '  make proxmox run TAGS=ssl'
 	@echo '  make proxmox_bootstrap run'
 	@echo '  make proxmox_bootstrap test'
 
@@ -118,12 +118,10 @@ deps: ## Install Ansible collections
 tests: ## Run ALL molecule tests
 	uv run molecule test -s proxmox
 	uv run molecule test -s proxmox_bootstrap
-	uv run molecule test -s proxmox_iso_builder
 
 clean: ## Destroy all molecule environments
 	uv run molecule destroy -s proxmox || true
 	uv run molecule destroy -s proxmox_bootstrap || true
-	uv run molecule destroy -s proxmox_iso_builder || true
 
 lint: ## Lint Ansible playbooks and roles
 	uv run ansible-lint

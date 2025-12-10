@@ -1,5 +1,5 @@
 ---
-# proxmox_iso_builder role handlers
+# Proxmox role handlers
 
 - name: Update apt cache
   ansible.builtin.apt:
