@@ -1,0 +1,7 @@
+---
+# Ubuntu LXC role internal variables
+
+# Computed network interface configuration
+# yamllint disable-line rule:line-length
+# noqa: yaml[line-length]
+ubuntu_lxc_netif: '{"net0":"name=eth0,bridge={{ ubuntu_lxc_network_bridge }},ip={{ ubuntu_lxc_network_ip }}{% if ubuntu_lxc_network_gateway %},gw={{ ubuntu_lxc_network_gateway }}{% endif %}"}'

@@ -70,3 +70,9 @@ inventory/ec2.ini
 *.log
 tmp/
 temp/
+
+# Molecule
+molecule/
+.molecule/
+
+.ansible_cache/

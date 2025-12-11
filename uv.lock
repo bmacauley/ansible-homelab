@@ -65,6 +65,7 @@ dependencies = [
     { name = "hvac" },
     { name = "molecule" },
     { name = "molecule-plugins" },
+    { name = "proxmoxer" },
 ]
 
 [package.metadata]
@@ -75,6 +76,7 @@ requires-dist = [
     { name = "hvac", specifier = ">=2.4.0" },
     { name = "molecule", specifier = ">=25.12.0" },
     { name = "molecule-plugins", specifier = ">=25.0.0" },
+    { name = "proxmoxer", specifier = ">=2.2.0" },
 ]
 
 [[package]]
@@ -630,6 +632,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
+name = "proxmoxer"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/54/dc2919eed681ca31220a9021e35935a3995335069b520279b4d55b9df822/proxmoxer-2.2.0.tar.gz", hash = "sha256:3ed63a58e5c0822841afdb3801f9d913a4996955c1c54f7319b5842ba2615006", size = 29666, upload-time = "2024-12-15T02:08:36.351Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/9a/0c3570e2ccce07d304c8a25f7238accc5174c234f5eddb3b666e20777898/proxmoxer-2.2.0-py3-none-any.whl", hash = "sha256:7e4431fd38e1a9321eedf6d860ddc373fc2b29ce1845fa8b072d7580d99f6b90", size = 19217, upload-time = "2024-12-15T02:08:34.047Z" },
 ]
 
 [[package]]

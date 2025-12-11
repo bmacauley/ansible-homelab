@@ -1,0 +1,63 @@
+---
+# Ubuntu LXC role defaults
+
+# === Proxmox API Connection ===
+ubuntu_lxc_api_host: "proxmox"
+ubuntu_lxc_api_port: 8006
+ubuntu_lxc_api_user: "root@pam"
+ubuntu_lxc_api_password: ""
+ubuntu_lxc_api_token_id: ""
+ubuntu_lxc_api_token_secret: ""
+ubuntu_lxc_validate_certs: false
+
+# === Proxmox Node ===
+ubuntu_lxc_node: "proxmox"
+
+# === Container Identification ===
+ubuntu_lxc_vmid: ""
+ubuntu_lxc_hostname: "ubuntu-lxc"
+
+# === Template Configuration ===
+ubuntu_lxc_template: "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+ubuntu_lxc_ostype: "ubuntu"
+
+# === Resource Allocation ===
+ubuntu_lxc_cores: 2
+ubuntu_lxc_memory: 2048
+ubuntu_lxc_swap: 512
+
+# === Storage Configuration ===
+ubuntu_lxc_storage: "local-lvm"
+ubuntu_lxc_disk_size: "8"
+
+# === Network Configuration ===
+ubuntu_lxc_network_bridge: "vmbr0"
+ubuntu_lxc_network_ip: "dhcp"
+ubuntu_lxc_network_gateway: ""
+ubuntu_lxc_nameserver: "1.1.1.1"
+ubuntu_lxc_searchdomain: ""
+
+# === Security ===
+ubuntu_lxc_unprivileged: true
+ubuntu_lxc_password: ""
+ubuntu_lxc_pubkey: ""
+
+# === Container Features ===
+ubuntu_lxc_features: []
+ubuntu_lxc_onboot: true
+
+# === Operation ===
+ubuntu_lxc_state: "present"
+ubuntu_lxc_force: false
+ubuntu_lxc_timeout: 300
+
+# === Multiple Containers ===
+# Define multiple containers as a list:
+# ubuntu_lxc_containers:
+#   - hostname: "web01"
+#     vmid: 101
+#     memory: 4096
+#   - hostname: "db01"
+#     vmid: 102
+#     disk_size: "32"
+ubuntu_lxc_containers: []
