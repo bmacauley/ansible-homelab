@@ -9,7 +9,10 @@
       "Bash(echo:*)",
       "Bash(uv --version:*)",
       "Bash(/opt/homebrew/bin/mise exec:*)",
-      "Bash(make lint:*)"
+      "Bash(make lint:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.ansible.com)",
+      "Bash(uv run ansible-playbook:*)"
     ],
     "deny": [],
     "ask": []

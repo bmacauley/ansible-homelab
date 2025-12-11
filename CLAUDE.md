@@ -40,6 +40,56 @@ ansible -i inventory/hosts.yml all -m ping
 ansible -i inventory/hosts.yml all --list-hosts
 
 ```
+
+### Git Workflow & Pull Requests
+
+When developing features, Claude must:
+
+1. **Create a feature branch** from the main branch (or current base branch)
+   - Use descriptive branch names: `feat/<feature-name>`, `fix/<issue-name>`, etc.
+
+2. **Make incremental, logical commits** that tell a story
+   - Each commit should represent a single, understandable step in the feature development
+   - Break down large features into smaller, reviewable commits
+   - Examples of good commit granularity:
+     - "Add defaults/main.yml with initial variables"
+     - "Implement task to install package dependencies"
+     - "Add template for service configuration"
+     - "Add handlers for service restart"
+     - "Update playbook to include new role"
+   - Avoid monolithic commits that mix multiple concerns (e.g., "Add new role" with 20 files changed)
+
+3. **Write clear commit messages**
+   - Use imperative mood: "Add role defaults" not "Added role defaults"
+   - First line should be concise (50-72 chars) and summarize the change
+   - Include body explaining the "why" if the commit is non-obvious
+   - Reference related issues/PRs when applicable
+
+4. **Create a Pull Request** when the feature is complete or ready for review
+   - PR title should clearly describe what the feature does
+   - PR description should explain:
+     - What the feature adds/changes
+     - Why it's needed
+     - Any breaking changes or migration steps
+     - How to test the changes
+   - Keep PRs focused on a single feature or fix
+   - If a feature is large, consider breaking it into multiple PRs
+
+5. **Commit incrementally during development**
+   - Don't wait until the end to commit everything
+   - Commit working, logical units as you build them
+   - This makes it easier to review, debug, and rollback if needed
+
+Example of good incremental commits for a new role:
+```
+feat: add ubuntu_lxc role structure
+feat(ubuntu_lxc): add defaults and variables
+feat(ubuntu_lxc): implement container creation tasks
+feat(ubuntu_lxc): add configuration template
+feat(ubuntu_lxc): add handlers for service management
+feat(ubuntu_lxc): integrate role into site.yml
+```
+
 ---
 
 ## Repository Architecture

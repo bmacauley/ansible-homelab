@@ -1,0 +1,139 @@
+---
+# Ubuntu LXC role tasks
+
+# =============================================================================
+# Validation
+# =============================================================================
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - ubuntu_lxc_api_host | length > 0
+      - ubuntu_lxc_node | length > 0
+      - ubuntu_lxc_hostname | length > 0 or ubuntu_lxc_containers | length > 0
+      - (ubuntu_lxc_api_password | length > 0) or (ubuntu_lxc_api_token_id | length > 0 and ubuntu_lxc_api_token_secret | length > 0)
+    fail_msg: "Required variables: api_host, node, hostname (or containers list), and api_password or api_token_id/secret"
+  tags:
+    - ubuntu-lxc
+    - validation
+
+# =============================================================================
+# Single Container Creation
+# =============================================================================
+
+- name: Debug Proxmox connection vars
+  ansible.builtin.debug:
+    msg:
+      - "api_host: {{ ubuntu_lxc_api_host }}"
+      - "api_port: {{ ubuntu_lxc_api_port }}"
+      - "api_user: {{ ubuntu_lxc_api_user }}"
+      - "api_token_id: {{ ubuntu_lxc_api_token_id }}"
+      - "node: {{ ubuntu_lxc_node }}"
+  tags:
+    - ubuntu-lxc
+    - debug
+  when: ubuntu_lxc_debug | default(true)
+
+- name: Create Ubuntu LXC container
+  community.proxmox.proxmox:
+    api_host: "{{ ubuntu_lxc_api_host }}"
+    api_port: "{{ ubuntu_lxc_api_port }}"
+    api_user: "{{ ubuntu_lxc_api_user }}"
+    api_password: "{{ ubuntu_lxc_api_password if ubuntu_lxc_api_password else omit }}"
+    api_token_id: "{{ ubuntu_lxc_api_token_id if ubuntu_lxc_api_token_id else omit }}"
+    api_token_secret: "{{ ubuntu_lxc_api_token_secret if ubuntu_lxc_api_token_secret else omit }}"
+    validate_certs: "{{ ubuntu_lxc_validate_certs }}"
+    node: "{{ ubuntu_lxc_node }}"
+    vmid: "{{ ubuntu_lxc_vmid if ubuntu_lxc_vmid else omit }}"
+    hostname: "{{ ubuntu_lxc_hostname }}"
+    ostemplate: "{{ ubuntu_lxc_template }}"
+    ostype: "{{ ubuntu_lxc_ostype }}"
+    storage: "{{ ubuntu_lxc_storage }}"
+    disk: "{{ ubuntu_lxc_storage }}:{{ ubuntu_lxc_disk_size }}"
+    cores: "{{ ubuntu_lxc_cores }}"
+    memory: "{{ ubuntu_lxc_memory }}"
+    swap: "{{ ubuntu_lxc_swap }}"
+    netif: "{{ ubuntu_lxc_netif }}"
+    nameserver: "{{ ubuntu_lxc_nameserver if ubuntu_lxc_nameserver else omit }}"
+    searchdomain: "{{ ubuntu_lxc_searchdomain if ubuntu_lxc_searchdomain else omit }}"
+    password: "{{ ubuntu_lxc_password if ubuntu_lxc_password else omit }}"
+    pubkey: "{{ ubuntu_lxc_pubkey if ubuntu_lxc_pubkey else omit }}"
+    unprivileged: "{{ ubuntu_lxc_unprivileged }}"
+    features: "{{ ubuntu_lxc_features if ubuntu_lxc_features | length > 0 else omit }}"
+    onboot: "{{ ubuntu_lxc_onboot }}"
+    state: "{{ ubuntu_lxc_state }}"
+    force: "{{ ubuntu_lxc_force }}"
+    timeout: "{{ ubuntu_lxc_timeout }}"
+  delegate_to: localhost
+  become: false
+  when: ubuntu_lxc_containers | length == 0
+  register: ubuntu_lxc_result
+  tags:
+    - ubuntu-lxc
+    - create
+
+- name: Display container creation result
+  ansible.builtin.debug:
+    msg:
+      - "Container: {{ ubuntu_lxc_hostname }}"
+      - "VMID: {{ ubuntu_lxc_result.vmid | default('auto-assigned') }}"
+      - "State: {{ ubuntu_lxc_state }}"
+  when:
+    - ubuntu_lxc_containers | length == 0
+    - ubuntu_lxc_result is defined
+  tags:
+    - ubuntu-lxc
+    - create
+
+# =============================================================================
+# Multiple Container Creation
+# =============================================================================
+
+- name: Create multiple Ubuntu LXC containers
+  community.proxmox.proxmox:
+    api_host: "{{ ubuntu_lxc_api_host }}"
+    api_port: "{{ ubuntu_lxc_api_port }}"
+    api_user: "{{ ubuntu_lxc_api_user }}"
+    api_password: "{{ ubuntu_lxc_api_password if ubuntu_lxc_api_password else omit }}"
+    api_token_id: "{{ ubuntu_lxc_api_token_id if ubuntu_lxc_api_token_id else omit }}"
+    api_token_secret: "{{ ubuntu_lxc_api_token_secret if ubuntu_lxc_api_token_secret else omit }}"
+    validate_certs: "{{ ubuntu_lxc_validate_certs }}"
+    node: "{{ item.node | default(ubuntu_lxc_node) }}"
+    vmid: "{{ item.vmid | default(omit) }}"
+    hostname: "{{ item.hostname }}"
+    ostemplate: "{{ item.template | default(ubuntu_lxc_template) }}"
+    ostype: "{{ item.ostype | default(ubuntu_lxc_ostype) }}"
+    storage: "{{ item.storage | default(ubuntu_lxc_storage) }}"
+    disk: "{{ item.storage | default(ubuntu_lxc_storage) }}:{{ item.disk_size | default(ubuntu_lxc_disk_size) }}"
+    cores: "{{ item.cores | default(ubuntu_lxc_cores) }}"
+    memory: "{{ item.memory | default(ubuntu_lxc_memory) }}"
+    swap: "{{ item.swap | default(ubuntu_lxc_swap) }}"
+    netif: "{{ item.netif | default(ubuntu_lxc_netif) }}"
+    nameserver: "{{ item.nameserver | default(ubuntu_lxc_nameserver) | default(omit) }}"
+    searchdomain: "{{ item.searchdomain | default(ubuntu_lxc_searchdomain) | default(omit) }}"
+    password: "{{ item.password | default(ubuntu_lxc_password) | default(omit) }}"
+    pubkey: "{{ item.pubkey | default(ubuntu_lxc_pubkey) | default(omit) }}"
+    unprivileged: "{{ item.unprivileged | default(ubuntu_lxc_unprivileged) }}"
+    features: "{{ item.features | default(ubuntu_lxc_features) if (item.features | default(ubuntu_lxc_features)) | length > 0 else omit }}"
+    onboot: "{{ item.onboot | default(ubuntu_lxc_onboot) }}"
+    state: "{{ item.state | default(ubuntu_lxc_state) }}"
+    force: "{{ item.force | default(ubuntu_lxc_force) }}"
+    timeout: "{{ item.timeout | default(ubuntu_lxc_timeout) }}"
+  delegate_to: localhost
+  become: false
+  loop: "{{ ubuntu_lxc_containers }}"
+  loop_control:
+    label: "{{ item.hostname }}"
+  when: ubuntu_lxc_containers | length > 0
+  register: ubuntu_lxc_multi_result
+  tags:
+    - ubuntu-lxc
+    - create
+
+- name: Display multiple container results
+  ansible.builtin.debug:
+    msg: "Created containers: {{ ubuntu_lxc_containers | map(attribute='hostname') | list }}"
+  when: ubuntu_lxc_containers | length > 0
+  tags:
+    - ubuntu-lxc
+    - create

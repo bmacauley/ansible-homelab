@@ -1,0 +1,113 @@
+---
+# Create Ubuntu LXC containers on Proxmox
+#
+# Prerequisites:
+#   1. Store Proxmox API token in Vault at kv/proxmox:
+#      vault kv put kv/proxmox api-token-id="root@pam!ansible" api-token-secret="xxx"
+#   2. Optionally store container root password: vault kv patch kv/proxmox container-password="xxx"
+#
+# Usage:
+#   make ubuntu_lxc run
+#   make ubuntu_lxc run EXTRA_ARGS="-e ubuntu_lxc_hostname=myserver"
+
+- name: Provision Ubuntu LXC containers
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  become: false
+
+  vars_prompt:
+    - name: vault_username
+      prompt: "Vault username"
+      default: "{{ lookup('env', 'VAULT_USERNAME') | default('bmacauley', true) }}"
+      private: false
+    - name: vault_password
+      prompt: "Vault password"
+      private: true
+
+  vars:
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://127.0.0.1:8200', true) }}"
+
+  pre_tasks:
+    - name: Check if proxmoxer is available
+      ansible.builtin.command:
+        cmd: python3 -c "import proxmoxer"
+      register: proxmoxer_check
+      changed_when: false
+      failed_when: false
+      tags:
+        - always
+
+    - name: Install proxmoxer if missing
+      ansible.builtin.pip:
+        name: proxmoxer
+        state: present
+        extra_args: --user
+      when: proxmoxer_check.rc != 0
+      tags:
+        - always
+
+    - name: Authenticate to Vault with userpass
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import hvac, json
+            client = hvac.Client(url='{{ vault_addr }}')
+            login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}')
+            print(json.dumps({'token': login['auth']['client_token']}))
+      register: vault_login_result
+      changed_when: false
+      tags:
+        - always
+
+    - name: Set Vault token from userpass login
+      ansible.builtin.set_fact:
+        vault_token: "{{ (vault_login_result.stdout | from_json).token }}"
+      tags:
+        - always
+
+    - name: Fetch Proxmox API credentials from Vault
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        mount_point: "kv"
+        engine_mount_point: "kv"
+        path: "proxmox"
+      register: proxmox_secret
+      tags:
+        - always
+
+    - name: Set Proxmox API credentials
+      ansible.builtin.set_fact:
+        ubuntu_lxc_api_user: "{{ (proxmox_secret.data.data['api-token-id'] | split('!'))[0] }}"
+        ubuntu_lxc_api_token_id: "{{ (proxmox_secret.data.data['api-token-id'] | split('!', 1))[1] }}"
+        ubuntu_lxc_api_token_secret: "{{ proxmox_secret.data.data['api-token-secret'] }}"
+        ubuntu_lxc_password: "{{ proxmox_secret.data.data['container-password'] | default('') }}"
+      tags:
+        - always
+
+    - name: Debug - Confirm credentials loaded
+      ansible.builtin.debug:
+        msg:
+          - "Vault addr: {{ vault_addr }}"
+          # - "API token ID: {{ ubuntu_lxc_api_token_id | regex_replace('!.*', '!***') }}"
+          - "API token ID: {{ ubuntu_lxc_api_token_id }}"
+          - "Container password: {{ 'set' if ubuntu_lxc_password else 'not set' }}"
+      tags:
+        - always
+
+  roles:
+    - role: ubuntu_lxc
+      tags:
+        - ubuntu-lxc
+
+  post_tasks:
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg:
+          - "LXC container provisioning complete"
+          - "Container hostname: {{ ubuntu_lxc_hostname }}"
+      tags:
+        - always

@@ -38,6 +38,7 @@ help: ## Show help
 	@echo 'Playbooks:'
 	@echo '  proxmox              Select proxmox playbook'
 	@echo '  proxmox_bootstrap    Select proxmox_bootstrap playbook'
+	@echo '  ubuntu_lxc           Select ubuntu_lxc playbook'
 	@echo ''
 	@echo 'Actions:'
 	@echo '  run                  Run the selected playbook'
@@ -69,7 +70,7 @@ help: ## Show help
 # ----------------------------------------------------------------
 # Playbook selectors (set PLAYBOOK and SCENARIO variables)
 # ----------------------------------------------------------------
-.PHONY: proxmox proxmox_bootstrap
+.PHONY: proxmox proxmox_bootstrap ubuntu_lxc
 
 proxmox: ## Select proxmox playbook
 	$(eval PLAYBOOK = proxmox)
@@ -78,6 +79,10 @@ proxmox: ## Select proxmox playbook
 proxmox_bootstrap: ## Select proxmox_bootstrap playbook
 	$(eval PLAYBOOK = proxmox_bootstrap)
 	$(eval SCENARIO = proxmox_bootstrap)
+
+ubuntu_lxc: ## Select ubuntu_lxc playbook
+	$(eval PLAYBOOK = ubuntu_lxc)
+	$(eval SCENARIO = ubuntu_lxc)
 
 # ----------------------------------------------------------------
 # Modifiers (set flags) - place BEFORE action in command
@@ -118,10 +123,12 @@ deps: ## Install Ansible collections
 tests: ## Run ALL molecule tests
 	uv run molecule test -s proxmox
 	uv run molecule test -s proxmox_bootstrap
+	uv run molecule test -s ubuntu_lxc
 
 clean: ## Destroy all molecule environments
 	uv run molecule destroy -s proxmox || true
 	uv run molecule destroy -s proxmox_bootstrap || true
+	uv run molecule destroy -s ubuntu_lxc || true
 
 lint: ## Lint Ansible playbooks and roles
 	uv run ansible-lint
