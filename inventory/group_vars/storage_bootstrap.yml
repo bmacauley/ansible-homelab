@@ -1,0 +1,10 @@
+---
+# Bootstrap group variables
+# Used for initial Tailscale setup via IP address before Tailscale is available
+
+# Tailscale arguments for bootstrap
+# --ssh enables Tailscale SSH for subsequent access
+tailscale_args: "--accept-routes --accept-dns --ssh --force-reauth --hostname=storage"
+
+# Tailscale state (always present for bootstrap)
+tailscale_state: present

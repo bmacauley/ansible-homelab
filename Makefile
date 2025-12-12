@@ -38,6 +38,8 @@ help: ## Show help
 	@echo 'Playbooks:'
 	@echo '  proxmox              Select proxmox playbook'
 	@echo '  proxmox_bootstrap    Select proxmox_bootstrap playbook'
+	@echo '  storage              Select storage playbook'
+	@echo '  storage_bootstrap    Select storage_bootstrap playbook'
 	@echo '  ubuntu_lxc           Select ubuntu_lxc playbook'
 	@echo ''
 	@echo 'Actions:'
@@ -70,7 +72,7 @@ help: ## Show help
 # ----------------------------------------------------------------
 # Playbook selectors (set PLAYBOOK and SCENARIO variables)
 # ----------------------------------------------------------------
-.PHONY: proxmox proxmox_bootstrap ubuntu_lxc
+.PHONY: proxmox proxmox_bootstrap storage storage_bootstrap ubuntu_lxc
 
 proxmox: ## Select proxmox playbook
 	$(eval PLAYBOOK = proxmox)
@@ -79,6 +81,14 @@ proxmox: ## Select proxmox playbook
 proxmox_bootstrap: ## Select proxmox_bootstrap playbook
 	$(eval PLAYBOOK = proxmox_bootstrap)
 	$(eval SCENARIO = proxmox_bootstrap)
+
+storage: ## Select storage playbook
+	$(eval PLAYBOOK = storage)
+	$(eval SCENARIO = storage)
+
+storage_bootstrap: ## Select storage_bootstrap playbook
+	$(eval PLAYBOOK = storage_bootstrap)
+	$(eval SCENARIO = storage_bootstrap)
 
 ubuntu_lxc: ## Select ubuntu_lxc playbook
 	$(eval PLAYBOOK = ubuntu_lxc)
