@@ -12,7 +12,13 @@
       "Bash(make lint:*)",
       "WebSearch",
       "WebFetch(domain:docs.ansible.com)",
-      "Bash(uv run ansible-playbook:*)"
+      "Bash(uv run ansible-playbook:*)",
+      "Bash(gh pr create:*)",
+      "Bash(make storage test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr view:*)"
     ],
     "deny": [],
     "ask": []
