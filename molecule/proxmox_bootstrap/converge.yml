@@ -13,6 +13,9 @@
     ansible_ssh_pass: "{{ proxmox_root_password }}"
     tailscale_state: present
     tailscale_args: "--accept-routes --accept-dns --ssh"
+    # DNS role settings (skip Tailscale in Docker test)
+    dns_enable_resolved: true
+    dns_tailscale_accept_dns: false  # Skip Tailscale in Docker test
 
   pre_tasks:
     - name: Ensure Python exists
@@ -97,6 +100,11 @@
       ansible.builtin.apt:
         update_cache: true
         cache_valid_time: 3600
+
+  roles:
+    - role: dns
+      tags:
+        - dns
 
   tasks:
     - name: Verify SSH password is set (for bootstrap)
