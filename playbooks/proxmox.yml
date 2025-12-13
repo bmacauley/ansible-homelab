@@ -24,6 +24,9 @@
         - ssl
         - iso-builder
         - repos
+    - role: dns
+      tags:
+        - dns
     - role: mdns
       tags:
         - mdns
