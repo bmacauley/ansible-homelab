@@ -58,6 +58,7 @@ help: ## Show help
 	@echo '  make install deps    Install Ansible collections'
 	@echo '  make tests           Run all molecule tests'
 	@echo '  make lint            Lint playbooks and roles'
+	@echo '  make pre-commit      Run pre-commit hooks on all files'
 	@echo '  make clean           Destroy all molecule environments'
 	@echo ''
 	@echo 'Examples:'
@@ -117,7 +118,7 @@ destroy: ## Destroy molecule test environment
 # ----------------------------------------------------------------
 # Utility targets
 # ----------------------------------------------------------------
-.PHONY: install deps tests clean lint
+.PHONY: install deps tests clean lint pre-commit
 
 install: ## Utility selector
 	@:
@@ -139,6 +140,9 @@ clean: ## Destroy all molecule environments
 
 lint: ## Lint Ansible playbooks and roles
 	uv run ansible-lint
+
+pre-commit: ## Run pre-commit hooks on all files
+	mise exec -- prek run --all-files
 
 # ----------------------------------------------------------------
 # Catch-all (prevents "No rule to make target" errors)
