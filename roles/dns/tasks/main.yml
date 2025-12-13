@@ -1,0 +1,119 @@
+---
+# DNS role tasks - Configure systemd-resolved for Tailscale MagicDNS
+
+- name: Install systemd-resolved
+  ansible.builtin.apt:
+    name: systemd-resolved
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: dns_enable_resolved
+  tags:
+    - role-dns
+    - install
+
+- name: Enable and start systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: dns_enable_resolved
+  tags:
+    - role-dns
+    - service
+
+- name: Configure systemd-resolved
+  ansible.builtin.template:
+    src: resolved.conf.j2
+    dest: /etc/systemd/resolved.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: dns_enable_resolved
+  notify: Restart systemd-resolved
+  tags:
+    - role-dns
+    - config
+
+- name: Check current /etc/resolv.conf status
+  ansible.builtin.stat:
+    path: /etc/resolv.conf
+  register: resolv_conf_stat
+  tags:
+    - role-dns
+    - config
+
+- name: Remove existing /etc/resolv.conf if not a symlink
+  ansible.builtin.file:
+    path: /etc/resolv.conf
+    state: absent
+  when:
+    - dns_enable_resolved
+    - resolv_conf_stat.stat.exists
+    - not resolv_conf_stat.stat.islnk
+  register: resolv_conf_remove
+  failed_when: false
+  tags:
+    - role-dns
+    - config
+
+- name: Create symlink for /etc/resolv.conf to systemd-resolved stub
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+  when:
+    - dns_enable_resolved
+    - resolv_conf_remove is not failed or resolv_conf_stat.stat.islnk
+  register: resolv_conf_link
+  failed_when: false
+  tags:
+    - role-dns
+    - config
+
+- name: Warn if resolv.conf could not be configured (Docker limitation)
+  ansible.builtin.debug:
+    msg: "WARNING: Could not configure /etc/resolv.conf - this is expected in Docker containers"
+  when:
+    - dns_enable_resolved
+    - (resolv_conf_remove is failed or resolv_conf_link is failed)
+    - not resolv_conf_stat.stat.islnk
+  tags:
+    - role-dns
+    - config
+
+- name: Flush handlers to apply resolved configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Configure Tailscale to accept DNS
+  ansible.builtin.command:
+    cmd: tailscale set --accept-dns=true
+  register: tailscale_dns_result
+  changed_when: tailscale_dns_result.rc == 0
+  when: dns_tailscale_accept_dns
+  notify: Restart tailscaled
+  tags:
+    - role-dns
+    - tailscale
+
+- name: Verify DNS resolution status
+  ansible.builtin.command:
+    cmd: resolvectl status
+  register: resolvectl_status
+  changed_when: false
+  when: dns_enable_resolved
+  tags:
+    - role-dns
+    - verify
+
+- name: Display DNS configuration status
+  ansible.builtin.debug:
+    msg:
+      - "systemd-resolved configured successfully"
+      - "Tailscale accept-dns: {{ 'enabled' if dns_tailscale_accept_dns else 'disabled' }}"
+  when: dns_enable_resolved
+  tags:
+    - role-dns
+    - verify

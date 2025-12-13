@@ -1,0 +1,32 @@
+# /etc/systemd/resolved.conf
+# Managed by Ansible - DNS role
+# See resolved.conf(5) for details
+
+[Resolve]
+# Primary DNS servers are managed by Tailscale via MagicDNS
+# These are fallback servers only
+{% if dns_fallback_servers | length > 0 %}
+FallbackDNS={{ dns_fallback_servers | join(' ') }}
+{% endif %}
+
+# LLMNR: Link-Local Multicast Name Resolution
+# "resolve" = accept LLMNR queries but don't respond
+LLMNR={{ dns_llmnr }}
+
+# MulticastDNS: mDNS (.local domain)
+# "resolve" = accept mDNS but let Avahi handle responses
+MulticastDNS={{ dns_multicast_dns }}
+
+# DNSSEC validation
+DNSSEC={{ dns_dnssec }}
+
+{% if dns_over_tls %}
+# DNS over TLS
+DNSOverTLS=yes
+{% else %}
+DNSOverTLS=no
+{% endif %}
+
+# Cache settings
+Cache=yes
+CacheFromLocalhost=no

@@ -39,9 +39,34 @@
           - enterprise_content.rc != 0 or 'Disabled' in enterprise_content.stdout or 'deb https://enterprise' not in enterprise_content.stdout
         fail_msg: "Enterprise repo should be disabled"
 
+    # DNS role verification
+    - name: Verify systemd-resolved is installed
+      ansible.builtin.command: which resolvectl
+      register: resolvectl_installed
+      changed_when: false
+
+    - name: Assert systemd-resolved is installed
+      ansible.builtin.assert:
+        that:
+          - resolvectl_installed.rc == 0
+        fail_msg: "systemd-resolved should be installed for DNS management"
+
+    - name: Verify systemd-resolved service is running
+      ansible.builtin.systemd:
+        name: systemd-resolved
+      register: resolved_service
+
+    - name: Assert systemd-resolved is enabled and running
+      ansible.builtin.assert:
+        that:
+          - resolved_service.status.ActiveState == "active"
+          - resolved_service.status.UnitFileState == "enabled"
+        fail_msg: "systemd-resolved should be enabled and running"
+
     - name: Display verification results
       ansible.builtin.debug:
         msg:
           - "Python: {{ python_version.stdout }}"
           - "APT status: OK"
           - "Enterprise repo: Disabled"
+          - "systemd-resolved: Installed and running"

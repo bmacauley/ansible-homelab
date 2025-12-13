@@ -1,0 +1,26 @@
+---
+# DNS role defaults
+
+# Enable systemd-resolved for DNS management
+dns_enable_resolved: true
+
+# Enable Tailscale MagicDNS integration (accept-dns)
+dns_tailscale_accept_dns: true
+
+# Fallback DNS servers (used when upstream fails)
+dns_fallback_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+# DNS over TLS (optional)
+dns_over_tls: false
+
+# LLMNR mode: yes, no, resolve (resolve = accept but don't respond)
+dns_llmnr: "resolve"
+
+# MulticastDNS mode: yes, no, resolve
+# Set to "resolve" to allow Avahi to handle mDNS responses
+dns_multicast_dns: "resolve"
+
+# DNSSEC mode: no, allow-downgrade, yes
+dns_dnssec: "allow-downgrade"

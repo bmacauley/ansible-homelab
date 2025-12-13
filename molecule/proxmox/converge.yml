@@ -7,6 +7,9 @@
     # mDNS settings
     mdns_hostname: "proxmox-test"
     mdns_interface: ""
+    # DNS role settings (skip Tailscale in Docker test)
+    dns_enable_resolved: true
+    dns_tailscale_accept_dns: false  # Skip Tailscale in Docker test
     # Proxmox role settings (skip proxmox-specific packages in test)
     proxmox_iso_packages:
       - xorriso
@@ -24,28 +27,15 @@
     - name: Gather facts after Python installation
       ansible.builtin.setup:
 
+  roles:
+    - role: dns
+      tags:
+        - dns
+    - role: mdns
+      tags:
+        - mdns
+
   tasks:
-    # Test mDNS role tasks
-    - name: Install avahi packages (mDNS test)
-      ansible.builtin.apt:
-        name:
-          - avahi-daemon
-          - avahi-utils
-        state: present
-        update_cache: true
-        cache_valid_time: 3600
-
-    - name: Verify avahi-daemon installed
-      ansible.builtin.command: which avahi-daemon
-      register: avahi_check
-      changed_when: false
-
-    - name: Assert avahi is installed
-      ansible.builtin.assert:
-        that:
-          - avahi_check.rc == 0
-        fail_msg: "avahi-daemon should be installed for mDNS"
-
     # Test ISO builder tasks (simplified - skip proxmox-specific tools)
     - name: Install ISO building tools
       ansible.builtin.apt:
@@ -69,5 +59,6 @@
       ansible.builtin.debug:
         msg:
           - "Proxmox playbook tests complete!"
+          - "DNS (systemd-resolved): OK"
           - "mDNS packages: OK"
           - "ISO builder tools: OK"
