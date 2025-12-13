@@ -72,7 +72,7 @@ tmp/
 temp/
 
 # Molecule
-molecule/
+
 .molecule/
 
 .ansible_cache/

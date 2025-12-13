@@ -1,0 +1,48 @@
+---
+- name: Verify Storage Bootstrap
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify Python is installed
+      ansible.builtin.command: python3 --version
+      register: python_version
+      changed_when: false
+
+    - name: Assert Python is available
+      ansible.builtin.assert:
+        that:
+          - python_version.rc == 0
+        fail_msg: "Python3 should be installed"
+
+    - name: Verify apt is functional
+      ansible.builtin.apt:
+        name: file
+        state: present
+      register: apt_check
+
+    - name: Assert apt is working
+      ansible.builtin.assert:
+        that:
+          - apt_check is success
+        fail_msg: "apt should be functional"
+
+    - name: Check sudoers file exists
+      ansible.builtin.stat:
+        path: /etc/sudoers.d/ubuntu
+      register: sudoers_file
+
+    - name: Assert sudoers file is configured
+      ansible.builtin.assert:
+        that:
+          - sudoers_file.stat.exists
+          - sudoers_file.stat.mode == '0440'
+        fail_msg: "Sudoers file should exist with correct permissions"
+
+    - name: Display verification results
+      ansible.builtin.debug:
+        msg:
+          - "Python: {{ python_version.stdout }}"
+          - "APT status: OK"
+          - "Sudoers: OK"

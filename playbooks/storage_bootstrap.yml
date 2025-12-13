@@ -100,6 +100,17 @@
       tags:
         - always
 
+    - name: Configure ubuntu user for passwordless sudo
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/ubuntu
+        content: "ubuntu ALL=(ALL) NOPASSWD:ALL\n"
+        mode: "0440"
+        owner: root
+        group: root
+        validate: "visudo -cf %s"
+      tags:
+        - always
+
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
