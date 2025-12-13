@@ -138,6 +138,9 @@
     - role: artis3n.tailscale.machine
       vars:
         state: "{{ tailscale_state }}"
+    - role: dns
+      tags:
+        - dns
 
   post_tasks:
     - name: Verify Tailscale is running
