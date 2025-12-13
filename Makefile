@@ -55,6 +55,7 @@ help: ## Show help
 	@echo '  EXTRA_ARGS=<args>    Pass extra args to ansible-playbook'
 	@echo ''
 	@echo 'Utilities:'
+	@echo '  make setup           First-time developer setup (tools, deps, hooks)'
 	@echo '  make install deps    Install Ansible collections'
 	@echo '  make tests           Run all molecule tests'
 	@echo '  make lint            Lint playbooks and roles'
@@ -118,7 +119,19 @@ destroy: ## Destroy molecule test environment
 # ----------------------------------------------------------------
 # Utility targets
 # ----------------------------------------------------------------
-.PHONY: install deps tests clean lint pre-commit
+.PHONY: setup install deps tests clean lint pre-commit
+
+setup: ## First-time developer setup
+	@echo "==> Installing mise tools..."
+	mise install
+	@echo "==> Installing Python dependencies..."
+	uv sync
+	@echo "==> Installing Ansible collections..."
+	uv run ansible-galaxy collection install -r requirements.yml
+	@echo "==> Installing pre-commit hooks..."
+	mise exec -- prek install
+	@echo ""
+	@echo "Setup complete! Run 'make help' to see available commands."
 
 install: ## Utility selector
 	@:
