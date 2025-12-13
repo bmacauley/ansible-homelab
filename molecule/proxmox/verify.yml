@@ -27,6 +27,48 @@
           - apt_check is success
         fail_msg: "apt should be functional"
 
+    # DNS role verification
+    - name: Verify systemd-resolved is installed
+      ansible.builtin.command: which resolvectl
+      register: resolvectl_installed
+      changed_when: false
+
+    - name: Assert systemd-resolved is installed
+      ansible.builtin.assert:
+        that:
+          - resolvectl_installed.rc == 0
+        fail_msg: "systemd-resolved should be installed for DNS management"
+
+    - name: Check /etc/resolv.conf status
+      ansible.builtin.stat:
+        path: /etc/resolv.conf
+      register: resolv_conf
+
+    # In Docker, resolv.conf may not be configurable (device busy)
+    # So we just verify it exists and systemd-resolved is running
+    - name: Assert /etc/resolv.conf exists
+      ansible.builtin.assert:
+        that:
+          - resolv_conf.stat.exists
+        fail_msg: "/etc/resolv.conf should exist"
+
+    - name: Note resolv.conf symlink status
+      ansible.builtin.debug:
+        msg: "/etc/resolv.conf is {{ 'a symlink to ' + resolv_conf.stat.lnk_source if resolv_conf.stat.islnk else 'a regular file (Docker limitation)' }}"
+
+    - name: Verify systemd-resolved service is running
+      ansible.builtin.systemd:
+        name: systemd-resolved
+      register: resolved_service
+
+    - name: Assert systemd-resolved is enabled and running
+      ansible.builtin.assert:
+        that:
+          - resolved_service.status.ActiveState == "active"
+          - resolved_service.status.UnitFileState == "enabled"
+        fail_msg: "systemd-resolved should be enabled and running"
+
+    # mDNS verification
     - name: Verify avahi-daemon is installed
       ansible.builtin.command: which avahi-daemon
       register: avahi_installed
@@ -38,6 +80,7 @@
           - avahi_installed.rc == 0
         fail_msg: "avahi-daemon should be installed for mDNS"
 
+    # ISO tools verification
     - name: Verify xorriso is installed
       ansible.builtin.command: which xorriso
       register: xorriso_installed
@@ -54,5 +97,6 @@
         msg:
           - "Python: {{ python_version.stdout }}"
           - "APT status: OK"
+          - "systemd-resolved: Installed and running"
           - "Avahi: Installed"
           - "xorriso: Installed"
