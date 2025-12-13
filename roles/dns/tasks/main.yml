@@ -39,7 +39,7 @@
 - name: Check current /etc/resolv.conf status
   ansible.builtin.stat:
     path: /etc/resolv.conf
-  register: resolv_conf_stat
+  register: dns_resolv_conf_stat
   tags:
     - role-dns
     - config
@@ -50,9 +50,9 @@
     state: absent
   when:
     - dns_enable_resolved
-    - resolv_conf_stat.stat.exists
-    - not resolv_conf_stat.stat.islnk
-  register: resolv_conf_remove
+    - dns_resolv_conf_stat.stat.exists
+    - not dns_resolv_conf_stat.stat.islnk
+  register: dns_resolv_conf_remove
   failed_when: false
   tags:
     - role-dns
@@ -66,8 +66,8 @@
     force: true
   when:
     - dns_enable_resolved
-    - resolv_conf_remove is not failed or resolv_conf_stat.stat.islnk
-  register: resolv_conf_link
+    - dns_resolv_conf_remove is not failed or dns_resolv_conf_stat.stat.islnk
+  register: dns_resolv_conf_link
   failed_when: false
   tags:
     - role-dns
@@ -78,8 +78,8 @@
     msg: "WARNING: Could not configure /etc/resolv.conf - this is expected in Docker containers"
   when:
     - dns_enable_resolved
-    - (resolv_conf_remove is failed or resolv_conf_link is failed)
-    - not resolv_conf_stat.stat.islnk
+    - (dns_resolv_conf_remove is failed or dns_resolv_conf_link is failed)
+    - not dns_resolv_conf_stat.stat.islnk
   tags:
     - role-dns
     - config
@@ -90,8 +90,8 @@
 - name: Configure Tailscale to accept DNS
   ansible.builtin.command:
     cmd: tailscale set --accept-dns=true
-  register: tailscale_dns_result
-  changed_when: tailscale_dns_result.rc == 0
+  register: dns_tailscale_result
+  changed_when: dns_tailscale_result.rc == 0
   when: dns_tailscale_accept_dns
   notify: Restart tailscaled
   tags:
@@ -101,7 +101,7 @@
 - name: Verify DNS resolution status
   ansible.builtin.command:
     cmd: resolvectl status
-  register: resolvectl_status
+  register: dns_resolvectl_status
   changed_when: false
   when: dns_enable_resolved
   tags:

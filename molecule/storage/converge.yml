@@ -28,7 +28,7 @@
     - name: Set system hostname (skip in Docker)
       ansible.builtin.hostname:
         name: "storage-test"
-      ignore_errors: true
+      failed_when: false
 
     - name: Update /etc/hosts with hostname (skip in Docker)
       ansible.builtin.lineinfile:
@@ -36,7 +36,7 @@
         regexp: '^127\.0\.1\.1'
         line: "127.0.1.1 storage-test"
         state: present
-      ignore_errors: true
+      failed_when: false
 
   roles:
     - role: mdns

@@ -33,14 +33,14 @@
       register: minio_server_download
       when: minio_installed_version.rc != 0 or minio_server_version not in (minio_installed_version.stdout | default(''))
 
-    - name: Install MinIO server deb package
+    - name: Install MinIO server deb package  # noqa: no-handler
       ansible.builtin.apt:
         deb: "{{ minio_tmp_dir }}/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
         state: present
       notify: Restart minio
       when: minio_server_download is changed
 
-    - name: Remove downloaded deb package
+    - name: Remove downloaded deb package  # noqa: no-handler
       ansible.builtin.file:
         path: "{{ minio_tmp_dir }}/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
         state: absent
@@ -55,7 +55,7 @@
     - name: Check if MinIO client is installed
       ansible.builtin.command:
         cmd: dpkg-query -W -f='${Version}' mcli
-      register: mcli_installed_version
+      register: minio_mcli_installed_version
       changed_when: false
       failed_when: false
 
@@ -65,15 +65,15 @@
         dest: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
         mode: "0644"
       register: minio_client_download
-      when: mcli_installed_version.rc != 0 or minio_client_version not in (mcli_installed_version.stdout | default(''))
+      when: minio_mcli_installed_version.rc != 0 or minio_client_version not in (minio_mcli_installed_version.stdout | default(''))
 
-    - name: Install MinIO client deb package
+    - name: Install MinIO client deb package  # noqa: no-handler
       ansible.builtin.apt:
         deb: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
         state: present
       when: minio_client_download is changed
 
-    - name: Remove downloaded client deb package
+    - name: Remove downloaded client deb package  # noqa: no-handler
       ansible.builtin.file:
         path: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
         state: absent
