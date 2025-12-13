@@ -23,7 +23,8 @@
       "Bash(git pull:*)",
       "Bash(make:*)",
       "WebFetch(domain:api.github.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(uv run molecule test:*)"
     ],
     "deny": [],
     "ask": []
