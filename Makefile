@@ -38,7 +38,7 @@ help: ## Show help
 	@echo 'Playbooks:'
 	@echo '  proxmox              Select proxmox playbook (has tests)'
 	@echo '  proxmox_bootstrap    Select proxmox_bootstrap playbook (has tests)'
-	@echo '  storage              Select storage playbook'
+	@echo '  storage              Select storage playbook (has tests)'
 	@echo '  storage_bootstrap    Select storage_bootstrap playbook (has tests)'
 	@echo ''
 	@echo 'Actions:'
@@ -83,6 +83,7 @@ proxmox_bootstrap: ## Select proxmox_bootstrap playbook
 
 storage: ## Select storage playbook
 	$(eval PLAYBOOK = storage)
+	$(eval SCENARIO = storage)
 
 storage_bootstrap: ## Select storage_bootstrap playbook
 	$(eval PLAYBOOK = storage_bootstrap)
@@ -127,11 +128,13 @@ deps: ## Install Ansible collections
 tests: ## Run ALL molecule tests
 	uv run molecule test -s proxmox
 	uv run molecule test -s proxmox_bootstrap
+	uv run molecule test -s storage
 	uv run molecule test -s storage_bootstrap
 
 clean: ## Destroy all molecule environments
 	uv run molecule destroy -s proxmox || true
 	uv run molecule destroy -s proxmox_bootstrap || true
+	uv run molecule destroy -s storage || true
 	uv run molecule destroy -s storage_bootstrap || true
 
 lint: ## Lint Ansible playbooks and roles

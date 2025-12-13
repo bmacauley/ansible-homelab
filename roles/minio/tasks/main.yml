@@ -18,23 +18,33 @@
     - role-minio
     - install
   block:
+    - name: Check if MinIO server is installed
+      ansible.builtin.command:
+        cmd: dpkg-query -W -f='${Version}' minio
+      register: minio_installed_version
+      changed_when: false
+      failed_when: false
+
     - name: Download MinIO server deb package
       ansible.builtin.get_url:
         url: "{{ minio_server_deb_url }}"
         dest: "{{ minio_tmp_dir }}/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
         mode: "0644"
       register: minio_server_download
+      when: minio_installed_version.rc != 0 or minio_server_version not in (minio_installed_version.stdout | default(''))
 
     - name: Install MinIO server deb package
       ansible.builtin.apt:
         deb: "{{ minio_tmp_dir }}/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
         state: present
       notify: Restart minio
+      when: minio_server_download is changed
 
     - name: Remove downloaded deb package
       ansible.builtin.file:
         path: "{{ minio_tmp_dir }}/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
         state: absent
+      when: minio_server_download is changed
 
 - name: Install MinIO client (mc)
   when: minio_install_client
@@ -42,22 +52,32 @@
     - role-minio
     - install
   block:
+    - name: Check if MinIO client is installed
+      ansible.builtin.command:
+        cmd: dpkg-query -W -f='${Version}' mcli
+      register: mcli_installed_version
+      changed_when: false
+      failed_when: false
+
     - name: Download MinIO client deb package
       ansible.builtin.get_url:
         url: "{{ minio_client_deb_url }}"
         dest: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
         mode: "0644"
       register: minio_client_download
+      when: mcli_installed_version.rc != 0 or minio_client_version not in (mcli_installed_version.stdout | default(''))
 
     - name: Install MinIO client deb package
       ansible.builtin.apt:
         deb: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
         state: present
+      when: minio_client_download is changed
 
     - name: Remove downloaded client deb package
       ansible.builtin.file:
         path: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
         state: absent
+      when: minio_client_download is changed
 
 - name: Create MinIO user and group
   when: minio_install_server
