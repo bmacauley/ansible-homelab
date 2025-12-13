@@ -61,4 +61,5 @@ jobs:
           ANSIBLE_FORCE_COLOR: "1"
           MOLECULE_NO_LOG: "false"
           ANSIBLE_ROLES_PATH: "./roles"
-        run: uv run molecule test -s ${{ matrix.scenario }}
+          ANSIBLE_VERBOSITY: "2"
+        run: uv run molecule --debug test -s ${{ matrix.scenario }}
