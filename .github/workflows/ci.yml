@@ -59,7 +59,4 @@ jobs:
         env:
           PY_COLORS: "1"
           ANSIBLE_FORCE_COLOR: "1"
-          MOLECULE_NO_LOG: "false"
-          ANSIBLE_ROLES_PATH: "./roles"
-          ANSIBLE_VERBOSITY: "2"
-        run: uv run molecule --debug test -s ${{ matrix.scenario }}
+        run: uv run molecule test -s ${{ matrix.scenario }}
