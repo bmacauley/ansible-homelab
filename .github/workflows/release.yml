@@ -7,106 +7,34 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
-    # Only run on merge commits (not direct pushes)
-    if: github.event.head_commit.message != '' && contains(github.event.head_commit.message, '(#')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Get latest tag
-        id: latest_tag
-        run: |
-          # Get the latest tag, default to v0.0.0 if none exists
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-          echo "Latest tag: $LATEST_TAG"
-
-      - name: Determine version bump
-        id: bump
-        run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          echo "Commit message: $COMMIT_MSG"
-
-          # Extract the first line (PR title from squash merge)
-          TITLE=$(echo "$COMMIT_MSG" | head -n1)
-          echo "PR title: $TITLE"
-
-          # Determine bump type based on conventional commit prefix
-          if [[ "$TITLE" =~ ^.*!: ]] || [[ "$TITLE" =~ ^BREAKING ]]; then
-            BUMP="major"
-          elif [[ "$TITLE" =~ ^feat(\(.+\))?!?: ]]; then
-            # Check for breaking change indicator
-            if [[ "$TITLE" =~ ! ]]; then
-              BUMP="major"
-            else
-              BUMP="minor"
-            fi
-          elif [[ "$TITLE" =~ ^fix(\(.+\))?: ]]; then
-            BUMP="patch"
-          elif [[ "$TITLE" =~ ^(docs|style|refactor|perf|test|chore|ci|build)(\(.+\))?: ]]; then
-            BUMP="patch"
-          else
-            echo "No conventional commit prefix found, skipping release"
-            echo "skip=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          echo "bump=$BUMP" >> $GITHUB_OUTPUT
-          echo "skip=false" >> $GITHUB_OUTPUT
-          echo "Version bump: $BUMP"
-
-      - name: Calculate new version
-        id: version
-        if: steps.bump.outputs.skip != 'true'
-        run: |
-          LATEST="${{ steps.latest_tag.outputs.tag }}"
-          BUMP="${{ steps.bump.outputs.bump }}"
-
-          # Remove 'v' prefix for calculation
-          VERSION=${LATEST#v}
-
-          # Split into major.minor.patch
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-
-          # Increment based on bump type
-          case $BUMP in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-          esac
-
-          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "New version: $NEW_VERSION"
-
-      - name: Create release
-        if: steps.bump.outputs.skip != 'true'
-        uses: softprops/action-gh-release@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: ${{ steps.version.outputs.version }}
-          body: |
-            ## Changes
+          node-version: "lts/*"
 
-            ${{ github.event.head_commit.message }}
+      - name: Install semantic-release
+        run: |
+          npm install -g semantic-release \
+            @semantic-release/commit-analyzer \
+            @semantic-release/release-notes-generator \
+            @semantic-release/github \
+            conventional-changelog-conventionalcommits
 
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.latest_tag.outputs.tag }}...${{ steps.version.outputs.version }}
-          generate_release_notes: false
+      - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
