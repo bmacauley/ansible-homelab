@@ -5,3 +5,4 @@
   ansible.builtin.systemd:
     name: avahi-daemon
     state: restarted
+  failed_when: false

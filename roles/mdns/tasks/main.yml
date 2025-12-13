@@ -70,6 +70,16 @@
     name: avahi-daemon
     enabled: true
     state: started
+  register: mdns_avahi_service
+  failed_when: false
+  tags:
+    - mdns
+    - service
+
+- name: Warn if avahi-daemon failed to start (Docker/CI limitation)
+  ansible.builtin.debug:
+    msg: "WARNING: avahi-daemon failed to start - this is expected in Docker/CI environments without D-Bus"
+  when: mdns_avahi_service is failed
   tags:
     - mdns
     - service
