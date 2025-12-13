@@ -1,0 +1,12 @@
+---
+# MinIO handlers
+
+- name: Restart minio
+  ansible.builtin.systemd:
+    name: minio
+    state: restarted
+    daemon_reload: true
+  listen: Restart minio
+  tags:
+    - role-minio
+    - service

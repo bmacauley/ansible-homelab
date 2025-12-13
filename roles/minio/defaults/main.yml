@@ -1,0 +1,54 @@
+---
+# MinIO role defaults
+
+# MinIO release versions (format: YYYYMMDDHHMMSS)
+minio_server_version: "20250422221226"
+minio_client_version: "20250521015954"
+
+# Install server and/or client
+minio_install_server: true
+minio_install_client: true
+
+# MinIO user and group (created by deb package as minio-user)
+minio_user: minio-user
+minio_group: minio-user
+
+# MinIO data directories
+minio_data_dirs:
+  - /var/lib/minio
+minio_create_data_dirs: true
+
+# MinIO server configuration
+minio_server_port: "9000"
+minio_server_address: ""
+minio_console_port: "9001"
+
+# MinIO root credentials (required)
+minio_root_user: ""
+minio_root_password: ""
+
+# MinIO site region
+minio_site_region: "us-east-1"
+
+# MinIO volumes (data directories formatted for MINIO_VOLUMES)
+# If empty, will use minio_data_dirs
+minio_volumes: ""
+
+# Additional server options
+minio_server_opts: ""
+
+# Additional environment variables
+minio_server_env_extra: ""
+
+# TLS configuration
+minio_enable_tls: false
+minio_tls_cert: ""
+minio_tls_key: ""
+minio_cert_dir: "/etc/minio/certs"
+
+# MinIO environment file location
+minio_env_file: "/etc/default/minio"
+
+# MinIO service state
+minio_service_enabled: true
+minio_service_state: started
