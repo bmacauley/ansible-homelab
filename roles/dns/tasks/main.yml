@@ -93,6 +93,7 @@
   register: tailscale_dns_result
   changed_when: tailscale_dns_result.rc == 0
   when: dns_tailscale_accept_dns
+  notify: Restart tailscaled
   tags:
     - role-dns
     - tailscale
