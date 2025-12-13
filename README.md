@@ -9,14 +9,13 @@ Ansible roles and playbooks to configure servers in a homelab.
 - **mDNS** - Local network discovery via Avahi (`.local` hostnames)
 - **MinIO** - S3-compatible object storage
 - **Proxmox** - Hypervisor configuration with SSL, repos, and LXC templates
-- **LXC Provisioning** - Automated Ubuntu container creation on Proxmox
 - **Vault Integration** - Secure secret management via HashiCorp Vault
 
 ## Prerequisites
 
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) package manager
-- HashiCorp Vault (for Tailscale auth keys and API tokens)
+- HashiCorp Vault (for Tailscale auth keys)
 - Docker (for Molecule tests)
 
 ## Quick Start
@@ -57,14 +56,12 @@ make storage run
 │   ├── proxmox_bootstrap.yml     # Proxmox bootstrap (Tailscale install)
 │   ├── storage.yml               # Storage node configuration
 │   ├── storage_bootstrap.yml     # Storage bootstrap (Tailscale install)
-│   ├── ubuntu_lxc.yml            # LXC container provisioning
 │   └── site.yml                  # Main entrypoint (all hosts)
 ├── roles/
 │   ├── proxmox/                  # Proxmox hypervisor configuration
 │   ├── dns/                      # systemd-resolved + Tailscale MagicDNS
 │   ├── mdns/                     # Avahi mDNS configuration
-│   ├── minio/                    # MinIO S3-compatible storage
-│   └── ubuntu_lxc/               # Ubuntu LXC container provisioning
+│   └── minio/                    # MinIO S3-compatible storage
 ├── molecule/                     # Molecule test scenarios
 │   ├── proxmox/
 │   ├── proxmox_bootstrap/
@@ -128,24 +125,6 @@ make storage run TAGS=mdns       # mDNS only
 ```
 
 **Roles included:** mdns, minio
-
-### ubuntu_lxc
-
-Provision Ubuntu LXC containers on Proxmox via API.
-
-```bash
-make ubuntu_lxc run
-make ubuntu_lxc run EXTRA_ARGS="-e ubuntu_lxc_hostname=myserver"
-```
-
-**Prerequisites:**
-```bash
-# Store Proxmox API token in Vault
-vault kv put kv/proxmox api-token-id="root@pam!ansible" api-token-secret="xxx"
-
-# Optionally store container root password
-vault kv patch kv/proxmox container-password="xxx"
-```
 
 ## Roles
 
@@ -220,36 +199,6 @@ Installs and configures MinIO S3-compatible object storage.
 
 **Tags:** `role-minio`, `install`, `config`, `service`
 
-### ubuntu_lxc
-
-Creates Ubuntu LXC containers on Proxmox via API.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ubuntu_lxc_api_host` | `proxmox` | Proxmox API host |
-| `ubuntu_lxc_hostname` | `ubuntu-lxc` | Container hostname |
-| `ubuntu_lxc_vmid` | (auto) | Container VMID |
-| `ubuntu_lxc_template` | `ubuntu-24.04-standard...` | LXC template |
-| `ubuntu_lxc_cores` | `2` | CPU cores |
-| `ubuntu_lxc_memory` | `2048` | Memory (MB) |
-| `ubuntu_lxc_disk_size` | `8` | Disk size (GB) |
-| `ubuntu_lxc_network_ip` | `dhcp` | Network IP or `dhcp` |
-| `ubuntu_lxc_unprivileged` | `true` | Unprivileged container |
-| `ubuntu_lxc_onboot` | `true` | Start on boot |
-
-**Tags:** `role-ubuntu-lxc`
-
-**Multiple containers:**
-```yaml
-ubuntu_lxc_containers:
-  - hostname: "web01"
-    vmid: 101
-    memory: 4096
-  - hostname: "db01"
-    vmid: 102
-    disk_size: "32"
-```
-
 ## Usage
 
 ### Make Commands
@@ -264,9 +213,6 @@ make proxmox_bootstrap run        # Bootstrap new Proxmox host
 # Storage
 make storage run                  # Configure storage host
 make storage_bootstrap run        # Bootstrap new storage host
-
-# LXC
-make ubuntu_lxc run               # Provision LXC container
 
 # Common options
 make <playbook> run TAGS=<tag>    # Run specific tags
@@ -323,16 +269,10 @@ export VAULT_USERNAME="myuser"
 | Path | Key | Description |
 |------|-----|-------------|
 | `kv/tailscale` | `auth-key` | Tailscale auth key |
-| `kv/proxmox` | `api-token-id` | Proxmox API token (e.g., `root@pam!ansible`) |
-| `kv/proxmox` | `api-token-secret` | Proxmox API token secret |
-| `kv/proxmox` | `container-password` | (Optional) LXC container root password |
 
 ```bash
 # Setup Tailscale auth key
 vault kv put kv/tailscale auth-key="tskey-auth-..."
-
-# Setup Proxmox API credentials
-vault kv put kv/proxmox api-token-id="root@pam!ansible" api-token-secret="xxx"
 ```
 
 ## Inventory
