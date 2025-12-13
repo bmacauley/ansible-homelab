@@ -312,4 +312,3 @@ This enables automatic help output via:
 ``` make
 make help
 ```
-
