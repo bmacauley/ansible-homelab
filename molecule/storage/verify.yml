@@ -1,0 +1,95 @@
+---
+- name: Verify Storage playbook
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    # Verify MinIO installation
+    - name: Check MinIO binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/minio
+      register: minio_binary
+
+    - name: Assert MinIO binary is installed
+      ansible.builtin.assert:
+        that:
+          - minio_binary.stat.exists
+          - minio_binary.stat.executable
+        fail_msg: "MinIO binary should be installed and executable"
+
+    - name: Check MinIO client (mcli) binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/mcli
+      register: mc_binary
+
+    - name: Assert MinIO client is installed
+      ansible.builtin.assert:
+        that:
+          - mc_binary.stat.exists
+          - mc_binary.stat.executable
+        fail_msg: "MinIO client (mcli) should be installed and executable"
+
+    - name: Check MinIO environment file exists
+      ansible.builtin.stat:
+        path: /etc/default/minio
+      register: minio_env
+
+    - name: Assert MinIO environment file exists
+      ansible.builtin.assert:
+        that:
+          - minio_env.stat.exists
+        fail_msg: "MinIO environment file should exist"
+
+    - name: Check MinIO data directory exists
+      ansible.builtin.stat:
+        path: /var/lib/minio
+      register: minio_data
+
+    - name: Assert MinIO data directory exists
+      ansible.builtin.assert:
+        that:
+          - minio_data.stat.exists
+          - minio_data.stat.isdir
+        fail_msg: "MinIO data directory should exist"
+
+    - name: Check MinIO service is enabled
+      ansible.builtin.systemd:
+        name: minio
+      register: minio_service
+
+    - name: Assert MinIO service is enabled
+      ansible.builtin.assert:
+        that:
+          - minio_service.status.UnitFileState == "enabled"
+        fail_msg: "MinIO service should be enabled"
+
+    # Verify mDNS installation
+    - name: Check avahi-daemon is installed
+      ansible.builtin.command: which avahi-daemon
+      register: avahi_check
+      changed_when: false
+      failed_when: false
+
+    - name: Assert avahi is installed
+      ansible.builtin.assert:
+        that:
+          - avahi_check.rc == 0
+        fail_msg: "avahi-daemon should be installed for mDNS"
+
+    - name: Get MinIO version
+      ansible.builtin.command: /usr/local/bin/minio --version
+      register: minio_version
+      changed_when: false
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg:
+          - "Storage playbook verification complete!"
+          - "MinIO binary: OK"
+          - "MinIO client: OK"
+          - "MinIO environment: OK"
+          - "MinIO data directory: OK"
+          - "MinIO service: enabled"
+          - "mDNS (avahi): OK"
+          - "MinIO version: {{ minio_version.stdout_lines[0] }}"

@@ -1,0 +1,147 @@
+---
+# Bootstrap playbook - Use this to install Tailscale on new storage hosts via IP address
+# After bootstrap, use the regular storage.yml playbook via Tailscale
+#
+# Usage:
+#   1. Set the IP address in inventory/hosts.yml under storage_bootstrap
+#   2. Enter credentials when prompted (fresh Vault token each run)
+#   3. Run: make storage_bootstrap run
+#   4. After success, use: make storage run (via Tailscale)
+
+- name: Bootstrap storage hosts with Tailscale
+  hosts: storage_bootstrap
+  gather_facts: true
+  become: true
+
+  vars_prompt:
+    - name: storage_user_password
+      prompt: "Storage host ubuntu password (for SSH access)"
+      private: true
+    - name: vault_username
+      prompt: "Vault username"
+      default: "{{ lookup('env', 'VAULT_USERNAME') | default('bmacauley', true) }}"
+      private: false
+    - name: vault_password
+      prompt: "Vault password"
+      private: true
+
+  vars:
+    ansible_ssh_pass: "{{ storage_user_password }}"
+    ansible_become_pass: "{{ storage_user_password }}"
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://127.0.0.1:8200', true) }}"
+    tailscale_state: present
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+      tags:
+        - always
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+      tags:
+        - always
+
+    - name: Authenticate to Vault with userpass (fresh token each run)
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import hvac, json, sys
+            client = hvac.Client(url='{{ vault_addr }}')
+            login = client.auth.userpass.login(username='{{ vault_username }}', password='{{ vault_password }}')
+            print(json.dumps({'token': login['auth']['client_token']}))
+      register: vault_login_result
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+      tags:
+        - always
+
+    - name: Set Vault token from userpass login
+      ansible.builtin.set_fact:
+        vault_token: "{{ (vault_login_result.stdout | from_json).token }}"
+      tags:
+        - always
+
+    - name: Debug - Test Vault connection
+      ansible.builtin.debug:
+        msg:
+          - "Vault addr: {{ vault_addr }}"
+          - "Token set: {{ 'yes' if vault_token else 'no' }}"
+          - "Token length: {{ vault_token | length if vault_token else 0 }}"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags:
+        - always
+
+    - name: Fetch Tailscale auth key from Vault KV v2
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        mount_point: "kv"
+        engine_mount_point: "kv"
+        path: "tailscale"
+      register: tailscale_secret
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags:
+        - always
+
+    - name: Set tailscale_authkey fact
+      ansible.builtin.set_fact:
+        tailscale_authkey: "{{ tailscale_secret.data.data['auth-key'] }}"
+      when: tailscale_secret is defined and tailscale_secret.data is defined
+      tags:
+        - always
+
+    - name: Configure ubuntu user for passwordless sudo
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/ubuntu
+        content: "ubuntu ALL=(ALL) NOPASSWD:ALL\n"
+        mode: "0440"
+        owner: root
+        group: root
+        validate: "visudo -cf %s"
+      tags:
+        - always
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+      tags:
+        - always
+
+  roles:
+    - role: artis3n.tailscale.machine
+      vars:
+        state: "{{ tailscale_state }}"
+
+  post_tasks:
+    - name: Verify Tailscale is running
+      ansible.builtin.command: tailscale status
+      register: tailscale_status
+      changed_when: false
+      failed_when: tailscale_status.rc != 0
+
+    - name: Display Tailscale status
+      ansible.builtin.debug:
+        msg: "{{ tailscale_status.stdout_lines }}"
+
+    - name: Get Tailscale hostname
+      ansible.builtin.command: tailscale status --json
+      register: tailscale_json
+      changed_when: false
+
+    - name: Display connection info
+      ansible.builtin.debug:
+        msg:
+          - "Bootstrap complete!"
+          - "Tailscale hostname: {{ (tailscale_json.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
+          - "Update inventory/hosts.yml with the Tailscale hostname"
+          - "Then use: make storage run"

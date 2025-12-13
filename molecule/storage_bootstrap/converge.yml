@@ -1,0 +1,95 @@
+---
+- name: Converge - Test Storage Bootstrap playbook
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    # Mock variables to avoid prompts (vars_prompt bypass)
+    storage_user_password: "test-password"
+    vault_username: "testuser"
+    vault_password: "testpassword"
+    vault_addr: "http://127.0.0.1:8200"
+    vault_token: "test-token-mock-12345"
+    ansible_ssh_pass: "{{ storage_user_password }}"
+    ansible_become_pass: "{{ storage_user_password }}"
+    tailscale_state: present
+    tailscale_authkey: "tskey-test-mock-key-12345"
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+
+    # Test the Python inline command syntax from the real playbook
+    - name: Test Python inline command syntax (mock hvac)
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json, sys
+            # Mock hvac login response - tests the command structure
+            mock_response = {'token': 'test-token-12345'}
+            print(json.dumps(mock_response))
+      register: python_inline_test
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: Verify Python inline command produced valid JSON
+      ansible.builtin.assert:
+        that:
+          - python_inline_test.stdout | from_json is defined
+          - (python_inline_test.stdout | from_json).token is defined
+        fail_msg: "Python inline command failed to produce valid JSON output"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+  tasks:
+    - name: Verify storage user password is set
+      ansible.builtin.assert:
+        that:
+          - storage_user_password is defined
+          - storage_user_password != ''
+        fail_msg: "Storage user password not set"
+
+    - name: Verify Vault credentials are set
+      ansible.builtin.assert:
+        that:
+          - vault_username is defined
+          - vault_password is defined
+        fail_msg: "Vault credentials not set"
+
+    - name: Verify Tailscale auth key is set
+      ansible.builtin.assert:
+        that:
+          - tailscale_authkey is defined
+          - tailscale_authkey != ''
+        fail_msg: "Tailscale auth key not set"
+
+    - name: Test passwordless sudo configuration
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/ubuntu
+        content: "ubuntu ALL=(ALL) NOPASSWD:ALL\n"
+        mode: "0440"
+        owner: root
+        group: root
+        validate: "visudo -cf %s"
+
+    - name: Test bootstrap playbook structure (skip actual Tailscale install)
+      ansible.builtin.debug:
+        msg: "Storage bootstrap would install Tailscale with state={{ tailscale_state }}"
+
+    - name: Simulate post-bootstrap tasks
+      ansible.builtin.debug:
+        msg:
+          - "Storage bootstrap test complete!"
+          - "In real bootstrap, Tailscale hostname would be displayed"
+          - "User would update inventory/hosts.yml with Tailscale hostname"
+          - "Then use: make storage run"

@@ -36,9 +36,10 @@ help: ## Show help
 	@echo 'Usage: make <playbook> [modifiers] <action> [VARS]'
 	@echo ''
 	@echo 'Playbooks:'
-	@echo '  proxmox              Select proxmox playbook'
-	@echo '  proxmox_bootstrap    Select proxmox_bootstrap playbook'
-	@echo '  ubuntu_lxc           Select ubuntu_lxc playbook'
+	@echo '  proxmox              Select proxmox playbook (has tests)'
+	@echo '  proxmox_bootstrap    Select proxmox_bootstrap playbook (has tests)'
+	@echo '  storage              Select storage playbook (has tests)'
+	@echo '  storage_bootstrap    Select storage_bootstrap playbook (has tests)'
 	@echo ''
 	@echo 'Actions:'
 	@echo '  run                  Run the selected playbook'
@@ -70,7 +71,7 @@ help: ## Show help
 # ----------------------------------------------------------------
 # Playbook selectors (set PLAYBOOK and SCENARIO variables)
 # ----------------------------------------------------------------
-.PHONY: proxmox proxmox_bootstrap ubuntu_lxc
+.PHONY: proxmox proxmox_bootstrap storage storage_bootstrap
 
 proxmox: ## Select proxmox playbook
 	$(eval PLAYBOOK = proxmox)
@@ -80,9 +81,13 @@ proxmox_bootstrap: ## Select proxmox_bootstrap playbook
 	$(eval PLAYBOOK = proxmox_bootstrap)
 	$(eval SCENARIO = proxmox_bootstrap)
 
-ubuntu_lxc: ## Select ubuntu_lxc playbook
-	$(eval PLAYBOOK = ubuntu_lxc)
-	$(eval SCENARIO = ubuntu_lxc)
+storage: ## Select storage playbook
+	$(eval PLAYBOOK = storage)
+	$(eval SCENARIO = storage)
+
+storage_bootstrap: ## Select storage_bootstrap playbook
+	$(eval PLAYBOOK = storage_bootstrap)
+	$(eval SCENARIO = storage_bootstrap)
 
 # ----------------------------------------------------------------
 # Modifiers (set flags) - place BEFORE action in command
@@ -123,12 +128,14 @@ deps: ## Install Ansible collections
 tests: ## Run ALL molecule tests
 	uv run molecule test -s proxmox
 	uv run molecule test -s proxmox_bootstrap
-	uv run molecule test -s ubuntu_lxc
+	uv run molecule test -s storage
+	uv run molecule test -s storage_bootstrap
 
 clean: ## Destroy all molecule environments
 	uv run molecule destroy -s proxmox || true
 	uv run molecule destroy -s proxmox_bootstrap || true
-	uv run molecule destroy -s ubuntu_lxc || true
+	uv run molecule destroy -s storage || true
+	uv run molecule destroy -s storage_bootstrap || true
 
 lint: ## Lint Ansible playbooks and roles
 	uv run ansible-lint

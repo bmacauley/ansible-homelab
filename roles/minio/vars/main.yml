@@ -1,0 +1,18 @@
+---
+# MinIO role internal variables (do not override)
+
+# Architecture mapping for download URLs
+minio_arch_map:
+  x86_64: "amd64"
+  aarch64: "arm64"
+  armv7l: "arm"
+
+# Detected architecture
+minio_arch: "{{ minio_arch_map[ansible_architecture] | default('amd64') }}"
+
+# MinIO deb package URLs
+minio_server_deb_url: "https://dl.min.io/server/minio/release/linux-{{ minio_arch }}/archive/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
+minio_client_deb_url: "https://dl.min.io/client/mc/release/linux-{{ minio_arch }}/archive/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
+
+# Temporary download location
+minio_tmp_dir: "/tmp"

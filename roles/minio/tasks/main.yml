@@ -1,0 +1,172 @@
+---
+# MinIO installation and configuration tasks
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - minio_root_user | length > 0
+      - minio_root_password | length > 0
+    fail_msg: "minio_root_user and minio_root_password are required"
+    quiet: true
+  tags:
+    - role-minio
+    - config
+
+- name: Install MinIO server
+  when: minio_install_server
+  tags:
+    - role-minio
+    - install
+  block:
+    - name: Check if MinIO server is installed
+      ansible.builtin.command:
+        cmd: dpkg-query -W -f='${Version}' minio
+      register: minio_installed_version
+      changed_when: false
+      failed_when: false
+
+    - name: Download MinIO server deb package
+      ansible.builtin.get_url:
+        url: "{{ minio_server_deb_url }}"
+        dest: "{{ minio_tmp_dir }}/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
+        mode: "0644"
+      register: minio_server_download
+      when: minio_installed_version.rc != 0 or minio_server_version not in (minio_installed_version.stdout | default(''))
+
+    - name: Install MinIO server deb package
+      ansible.builtin.apt:
+        deb: "{{ minio_tmp_dir }}/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
+        state: present
+      notify: Restart minio
+      when: minio_server_download is changed
+
+    - name: Remove downloaded deb package
+      ansible.builtin.file:
+        path: "{{ minio_tmp_dir }}/minio_{{ minio_server_version }}.0.0_{{ minio_arch }}.deb"
+        state: absent
+      when: minio_server_download is changed
+
+- name: Install MinIO client (mc)
+  when: minio_install_client
+  tags:
+    - role-minio
+    - install
+  block:
+    - name: Check if MinIO client is installed
+      ansible.builtin.command:
+        cmd: dpkg-query -W -f='${Version}' mcli
+      register: mcli_installed_version
+      changed_when: false
+      failed_when: false
+
+    - name: Download MinIO client deb package
+      ansible.builtin.get_url:
+        url: "{{ minio_client_deb_url }}"
+        dest: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
+        mode: "0644"
+      register: minio_client_download
+      when: mcli_installed_version.rc != 0 or minio_client_version not in (mcli_installed_version.stdout | default(''))
+
+    - name: Install MinIO client deb package
+      ansible.builtin.apt:
+        deb: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
+        state: present
+      when: minio_client_download is changed
+
+    - name: Remove downloaded client deb package
+      ansible.builtin.file:
+        path: "{{ minio_tmp_dir }}/mcli_{{ minio_client_version }}.0.0_{{ minio_arch }}.deb"
+        state: absent
+      when: minio_client_download is changed
+
+- name: Create MinIO user and group
+  when: minio_install_server
+  tags:
+    - role-minio
+    - install
+  block:
+    - name: Create MinIO group
+      ansible.builtin.group:
+        name: "{{ minio_group }}"
+        system: true
+        state: present
+
+    - name: Create MinIO user
+      ansible.builtin.user:
+        name: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        system: true
+        shell: /usr/sbin/nologin
+        home: /var/lib/minio
+        create_home: false
+        state: present
+
+- name: Configure MinIO server
+  when: minio_install_server
+  tags:
+    - role-minio
+    - config
+  block:
+    - name: Create MinIO data directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        mode: "0750"
+      loop: "{{ minio_data_dirs }}"
+      when: minio_create_data_dirs
+
+    - name: Create MinIO certificate directory
+      ansible.builtin.file:
+        path: "{{ minio_cert_dir }}"
+        state: directory
+        owner: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        mode: "0750"
+      when: minio_enable_tls
+
+    - name: Copy TLS certificate
+      ansible.builtin.copy:
+        content: "{{ minio_tls_cert }}"
+        dest: "{{ minio_cert_dir }}/public.crt"
+        owner: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        mode: "0640"
+      when: minio_enable_tls and minio_tls_cert | length > 0
+      notify: Restart minio
+
+    - name: Copy TLS private key
+      ansible.builtin.copy:
+        content: "{{ minio_tls_key }}"
+        dest: "{{ minio_cert_dir }}/private.key"
+        owner: "{{ minio_user }}"
+        group: "{{ minio_group }}"
+        mode: "0640"
+      when: minio_enable_tls and minio_tls_key | length > 0
+      notify: Restart minio
+
+    - name: Create MinIO environment file
+      ansible.builtin.template:
+        src: minio.env.j2
+        dest: "{{ minio_env_file }}"
+        owner: root
+        group: "{{ minio_group }}"
+        mode: "0640"
+      notify: Restart minio
+
+- name: Manage MinIO service
+  when: minio_install_server
+  tags:
+    - role-minio
+    - service
+  block:
+    - name: Flush handlers to apply configuration
+      ansible.builtin.meta: flush_handlers
+
+    - name: Ensure MinIO service is in desired state
+      ansible.builtin.systemd:
+        name: minio
+        enabled: "{{ minio_service_enabled }}"
+        state: "{{ minio_service_state }}"
+        daemon_reload: true

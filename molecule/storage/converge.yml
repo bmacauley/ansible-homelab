@@ -1,0 +1,57 @@
+---
+- name: Converge - Test Storage playbook
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    # mDNS settings
+    mdns_hostname: "storage-test"
+    mdns_interface: ""
+
+    # MinIO settings
+    minio_root_user: "minioadmin"
+    minio_root_password: "minioadmin123"
+    minio_data_dirs:
+      - /var/lib/minio
+    minio_server_port: "9000"
+    minio_console_port: "9001"
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+
+    # Skip hostname tasks in Docker - /etc/hosts is read-only
+    - name: Set system hostname (skip in Docker)
+      ansible.builtin.hostname:
+        name: "storage-test"
+      ignore_errors: true
+
+    - name: Update /etc/hosts with hostname (skip in Docker)
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: "127.0.1.1 storage-test"
+        state: present
+      ignore_errors: true
+
+  roles:
+    - role: mdns
+      tags:
+        - mdns
+    - role: minio
+      tags:
+        - minio
+
+  post_tasks:
+    - name: Validate storage node uptime
+      ansible.builtin.command: uptime
+      changed_when: false
+      register: uptime_output
+
+    - name: Display uptime
+      ansible.builtin.debug:
+        msg: "{{ uptime_output.stdout }}"

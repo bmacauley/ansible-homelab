@@ -1,0 +1,22 @@
+---
+# Storage group variables
+# Used after Tailscale bootstrap, accessed via Tailscale hostname
+
+# mDNS hostname for local network discovery
+mdns_hostname: "storage"
+
+# MinIO Configuration
+minio_install_server: true
+minio_install_client: true
+
+# Data directory - customize based on your storage setup
+minio_data_dirs:
+  - /var/lib/minio
+
+# Server ports
+minio_server_port: "9000"
+minio_console_port: "9001"
+
+# Credentials - set in storage_vault.yml for production
+minio_root_user: "minio"
+minio_root_password: "password"
