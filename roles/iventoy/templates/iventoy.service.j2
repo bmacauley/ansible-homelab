@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# iVentoy systemd service file
+
+[Unit]
+Description=iVentoy Network Boot Server
+After=network.target
+
+[Service]
+Type=simple
+User={{ iventoy_user }}
+Group={{ iventoy_group }}
+WorkingDirectory={{ iventoy_install_dir }}
+ExecStart={{ iventoy_install_dir }}/iventoy
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

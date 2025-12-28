@@ -1,0 +1,31 @@
+---
+# iVentoy handlers
+
+- name: Restart iventoy
+  ansible.builtin.systemd:
+    name: iventoy
+    state: restarted
+    daemon_reload: true
+  when: iventoy_install_method == "native"
+  listen: Restart iventoy
+  tags:
+    - role-iventoy
+    - service
+
+- name: Restart iventoy container
+  community.docker.docker_container:
+    name: "{{ iventoy_docker_container_name }}"
+    image: "{{ iventoy_docker_image }}"
+    state: started
+    restart_policy: "{{ iventoy_docker_restart_policy }}"
+    ports:
+      - "{{ iventoy_web_port }}:8080"
+      - "{{ iventoy_http_port }}:80"
+    volumes:
+      - "{{ iventoy_iso_dir }}:/data"
+    recreate: true
+  when: iventoy_install_method == "docker"
+  listen: Restart iventoy
+  tags:
+    - role-iventoy
+    - service

@@ -1,0 +1,239 @@
+---
+# iVentoy installation and configuration tasks
+
+- name: Install iVentoy via Docker
+  when: iventoy_install_method == "docker"
+  tags:
+    - role-iventoy
+    - install
+  block:
+    - name: Ensure Docker is installed
+      ansible.builtin.package:
+        name: docker.io
+        state: present
+        update_cache: true
+      tags:
+        - role-iventoy
+        - install
+        - docker
+
+    - name: Ensure Docker service is running
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+      tags:
+        - role-iventoy
+        - install
+        - docker
+
+    - name: Create iVentoy ISO directory
+      ansible.builtin.file:
+        path: "{{ iventoy_iso_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      tags:
+        - role-iventoy
+        - install
+        - docker
+
+    - name: Pull iVentoy Docker image
+      community.docker.docker_image:
+        name: "{{ iventoy_docker_image }}"
+        source: pull
+      tags:
+        - role-iventoy
+        - install
+        - docker
+
+    - name: Ensure iVentoy container is running
+      community.docker.docker_container:
+        name: "{{ iventoy_docker_container_name }}"
+        image: "{{ iventoy_docker_image }}"
+        state: started
+        restart_policy: "{{ iventoy_docker_restart_policy }}"
+        ports:
+          - "{{ iventoy_web_port }}:8080"
+          - "{{ iventoy_http_port }}:80"
+        volumes:
+          - "{{ iventoy_iso_dir }}:/data"
+        detach: true
+      tags:
+        - role-iventoy
+        - install
+        - docker
+      notify: Restart iventoy
+
+- name: Install iVentoy natively
+  when: iventoy_install_method == "native"
+  tags:
+    - role-iventoy
+    - install
+  block:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - wget
+          - tar
+          - systemd
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Create iVentoy user and group
+      ansible.builtin.group:
+        name: "{{ iventoy_group }}"
+        system: true
+        state: present
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Create iVentoy user
+      ansible.builtin.user:
+        name: "{{ iventoy_user }}"
+        group: "{{ iventoy_group }}"
+        system: true
+        shell: /bin/bash
+        home: "{{ iventoy_install_dir }}"
+        create_home: false
+        state: present
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Create iVentoy installation directory
+      ansible.builtin.file:
+        path: "{{ iventoy_install_dir }}"
+        state: directory
+        owner: "{{ iventoy_user }}"
+        group: "{{ iventoy_group }}"
+        mode: "0755"
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Create iVentoy ISO directory
+      ansible.builtin.file:
+        path: "{{ iventoy_iso_dir }}"
+        state: directory
+        owner: "{{ iventoy_user }}"
+        group: "{{ iventoy_group }}"
+        mode: "0755"
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Check if iVentoy is already installed
+      ansible.builtin.stat:
+        path: "{{ iventoy_install_dir }}/iventoy"
+      register: iventoy_installed
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Download iVentoy
+      ansible.builtin.get_url:
+        url: "{{ iventoy_native_download_url }}"
+        dest: "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}-linux.tar.gz"
+        mode: "0644"
+      when: not iventoy_installed.stat.exists
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Extract iVentoy
+      ansible.builtin.unarchive:
+        src: "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}-linux.tar.gz"
+        dest: "{{ iventoy_tmp_dir }}"
+        remote_src: true
+      when: not iventoy_installed.stat.exists
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Copy iVentoy files to installation directory
+      ansible.builtin.copy:
+        src: "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}/"
+        dest: "{{ iventoy_install_dir }}/"
+        owner: "{{ iventoy_user }}"
+        group: "{{ iventoy_group }}"
+        mode: "0755"
+        remote_src: true
+      when: not iventoy_installed.stat.exists
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Create iVentoy systemd service
+      ansible.builtin.template:
+        src: iventoy.service.j2
+        dest: /etc/systemd/system/iventoy.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart iventoy
+      tags:
+        - role-iventoy
+        - install
+        - native
+        - service
+
+    - name: Remove downloaded archive
+      ansible.builtin.file:
+        path: "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}-linux.tar.gz"
+        state: absent
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+    - name: Remove extracted directory
+      ansible.builtin.file:
+        path: "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}"
+        state: absent
+      tags:
+        - role-iventoy
+        - install
+        - native
+
+- name: Manage iVentoy service (native)
+  when: iventoy_install_method == "native"
+  tags:
+    - role-iventoy
+    - service
+  block:
+    - name: Flush handlers to apply configuration
+      ansible.builtin.meta: flush_handlers
+
+    - name: Ensure iVentoy service is in desired state
+      ansible.builtin.systemd:
+        name: iventoy
+        enabled: "{{ iventoy_service_enabled }}"
+        state: "{{ iventoy_service_state }}"
+        daemon_reload: true
+
+- name: Display iVentoy configuration
+  ansible.builtin.debug:
+    msg:
+      - "iVentoy installed via: {{ iventoy_install_method }}"
+      - "Web UI: http://{{ ansible_default_ipv4.address }}:{{ iventoy_web_port }}"
+      - "ISO directory: {{ iventoy_iso_dir }}"
+      - "Service state: {{ iventoy_service_state }}"
+  tags:
+    - role-iventoy
+    - verify
