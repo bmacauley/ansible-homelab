@@ -1,0 +1,31 @@
+# {{ ansible_managed }}
+# iVentoy systemd service file
+# Based on: https://www.iventoy.com/en/doc_start.html
+# Start command: bash iventoy.sh start
+# Auto-start PXE: bash iventoy.sh -R start
+# Note: iVentoy requires root privileges to access /sys/class/dmi/id/product_uuid
+
+[Unit]
+Description=iVentoy Network Boot Server
+After=network.target
+
+[Service]
+Type=forking
+# iVentoy requires root to access system files (/sys/class/dmi/id/product_uuid)
+User=root
+Group=root
+WorkingDirectory={{ iventoy_install_dir }}
+# Use -R flag to auto-start PXE service with last configuration
+# PIDFile is not needed - iventoy.sh manages its own PID
+ExecStart=/bin/bash {{ iventoy_install_dir }}/iventoy.sh -R start
+ExecStop=/bin/bash {{ iventoy_install_dir }}/iventoy.sh stop
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+# Don't kill the process immediately on stop
+KillMode=process
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

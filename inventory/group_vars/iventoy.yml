@@ -1,0 +1,45 @@
+---
+# iVentoy group variables
+# Used after Tailscale bootstrap, accessed via Tailscale hostname
+
+# Tailscale tailnet domain (for MagicDNS URLs)
+# Find yours at: https://login.tailscale.com/admin/dns
+tailscale_tailnet: "tailfb76f.ts.net"
+
+# Installation method: 'docker' or 'native'
+# Native is more resource-efficient (~50-100MB vs ~150-200MB for Docker)
+# Docker offers easier updates and isolation
+iventoy_install_method: "native"
+
+# iVentoy version
+iventoy_version: "1.0.20"
+
+# Installation directory (for native install)
+iventoy_install_dir: "/opt/iventoy"
+
+# ISO directory (where ISO files are stored)
+# Make sure this directory has sufficient space for your ISO files
+iventoy_iso_dir: "/var/lib/iventoy/iso"
+
+# Web UI port (for accessing iVentoy management interface)
+# Default is 26000 per official documentation: https://www.iventoy.com/en/doc_start.html
+iventoy_web_port: "26000"
+
+# HTTP port (for PXE boot - requires root or capabilities)
+# Note: Port 80 typically requires root privileges
+iventoy_http_port: "80"
+
+# HTTPS port (if enabled)
+iventoy_https_port: "443"
+
+# Enable HTTPS
+iventoy_enable_https: false
+
+# Service configuration
+iventoy_service_enabled: true
+iventoy_service_state: started
+
+# Docker configuration (when install_method is 'docker')
+iventoy_docker_image: "ziggyds/iventoy:{{ iventoy_version }}"
+iventoy_docker_container_name: "iventoy"
+iventoy_docker_restart_policy: "always"

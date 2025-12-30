@@ -1,0 +1,14 @@
+---
+# iVentoy role internal variables (do not override)
+
+# Architecture mapping
+iventoy_arch_map:
+  x86_64: "x86_64"
+  aarch64: "aarch64"
+  amd64: "x86_64"
+
+# Detected architecture
+iventoy_arch: "{{ iventoy_arch_map[ansible_architecture] | default('x86_64') }}"
+
+# Temporary download location
+iventoy_tmp_dir: "/tmp"

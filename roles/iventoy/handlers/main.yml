@@ -1,0 +1,47 @@
+---
+# iVentoy handlers
+
+- name: Clean up iventoy installation files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}-linux-free.tar.gz"
+    - "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}"
+  when: iventoy_install_method == "native"
+  listen: Clean up iventoy temp files
+  tags:
+    - role-iventoy
+    - install
+    - native
+
+- name: Restart iventoy
+  ansible.builtin.systemd:
+    name: iventoy
+    state: "{{ 'restarted' if (iventoy_service_state | default('started')) == 'started' else 'stopped' }}"
+    daemon_reload: true
+  when:
+    - iventoy_install_method == "native"
+    - iventoy_service_state is defined
+  listen: Restart iventoy
+  tags:
+    - role-iventoy
+    - service
+
+- name: Restart iventoy container
+  community.docker.docker_container:
+    name: "{{ iventoy_docker_container_name }}"
+    image: "{{ iventoy_docker_image }}"
+    state: started
+    restart_policy: "{{ iventoy_docker_restart_policy }}"
+    ports:
+      - "{{ iventoy_web_port }}:8080"
+      - "{{ iventoy_http_port }}:80"
+    volumes:
+      - "{{ iventoy_iso_dir }}:/data"
+    recreate: true
+  when: iventoy_install_method == "docker"
+  listen: Restart iventoy
+  tags:
+    - role-iventoy
+    - service

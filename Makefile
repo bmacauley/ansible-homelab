@@ -40,6 +40,7 @@ help: ## Show help
 	@echo '  proxmox_bootstrap    Select proxmox_bootstrap playbook (has tests)'
 	@echo '  storage              Select storage playbook (has tests)'
 	@echo '  storage_bootstrap    Select storage_bootstrap playbook (has tests)'
+	@echo '  iventoy              Select iventoy playbook (has tests)'
 	@echo ''
 	@echo 'Actions:'
 	@echo '  run                  Run the selected playbook'
@@ -73,7 +74,7 @@ help: ## Show help
 # ----------------------------------------------------------------
 # Playbook selectors (set PLAYBOOK and SCENARIO variables)
 # ----------------------------------------------------------------
-.PHONY: proxmox proxmox_bootstrap storage storage_bootstrap
+.PHONY: proxmox proxmox_bootstrap storage storage_bootstrap iventoy
 
 proxmox: ## Select proxmox playbook
 	$(eval PLAYBOOK = proxmox)
@@ -90,6 +91,10 @@ storage: ## Select storage playbook
 storage_bootstrap: ## Select storage_bootstrap playbook
 	$(eval PLAYBOOK = storage_bootstrap)
 	$(eval SCENARIO = storage_bootstrap)
+
+iventoy: ## Select iventoy playbook
+	$(eval PLAYBOOK = iventoy)
+	$(eval SCENARIO = iventoy)
 
 # ----------------------------------------------------------------
 # Modifiers (set flags) - place BEFORE action in command
@@ -144,12 +149,14 @@ tests: ## Run ALL molecule tests
 	uv run molecule test -s proxmox_bootstrap
 	uv run molecule test -s storage
 	uv run molecule test -s storage_bootstrap
+	uv run molecule test -s iventoy
 
 clean: ## Destroy all molecule environments
 	uv run molecule destroy -s proxmox || true
 	uv run molecule destroy -s proxmox_bootstrap || true
 	uv run molecule destroy -s storage || true
 	uv run molecule destroy -s storage_bootstrap || true
+	uv run molecule destroy -s iventoy || true
 
 lint: ## Lint Ansible playbooks and roles
 	uv run ansible-lint

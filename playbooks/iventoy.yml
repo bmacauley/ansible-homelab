@@ -1,0 +1,48 @@
+---
+# Configure iVentoy hosts (assumes Tailscale already installed via bootstrap)
+- name: Configure iVentoy hosts
+  hosts: iventoy
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+      tags:
+        - always
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+      tags:
+        - always
+
+  roles:
+    - role: iventoy
+      tags:
+        - role-iventoy
+        - install
+        - config
+        - service
+
+  post_tasks:
+    - name: Validate iVentoy node uptime
+      ansible.builtin.command: uptime
+      changed_when: false
+      register: uptime_output
+      tags:
+        - validation
+
+    - name: Display uptime
+      ansible.builtin.debug:
+        msg: "{{ uptime_output.stdout }}"
+      tags:
+        - validation
+
+    - name: Display iVentoy access information
+      ansible.builtin.debug:
+        msg:
+          - "iVentoy web UI: http://{{ ansible_default_ipv4.address }}:{{ iventoy_web_port | default(26000) }}"
+          - "ISO directory: {{ iventoy_iso_dir | default('/var/lib/iventoy/iso') }}"
+      tags:
+        - validation

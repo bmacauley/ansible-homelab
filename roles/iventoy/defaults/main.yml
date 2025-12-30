@@ -1,0 +1,46 @@
+---
+# iVentoy role defaults
+
+# Installation method: 'docker' or 'native'
+# Native is more resource-efficient (~50-100MB vs ~150-200MB for Docker)
+# Docker offers easier updates and isolation
+iventoy_install_method: "native"
+
+# iVentoy version
+iventoy_version: "1.0.20"
+
+# Installation directory (for native install)
+iventoy_install_dir: "/opt/iventoy"
+
+# ISO directory (where ISO files are stored)
+iventoy_iso_dir: "/opt/iventoy/iso"
+
+# Web UI port (default is 26000 per official docs)
+iventoy_web_port: "26000"
+
+# HTTP port (for PXE boot)
+iventoy_http_port: "80"
+
+# HTTPS port (if enabled)
+iventoy_https_port: "443"
+
+# Enable HTTPS
+iventoy_enable_https: false
+
+# iVentoy user and group (for native install)
+iventoy_user: "iventoy"
+iventoy_group: "iventoy"
+
+# Service configuration
+iventoy_service_enabled: true
+iventoy_service_state: started
+
+# Docker configuration (when install_method is 'docker')
+iventoy_docker_image: "ziggyds/iventoy:{{ iventoy_version }}"
+iventoy_docker_container_name: "iventoy"
+iventoy_docker_restart_policy: "always"
+
+# Native installation configuration
+# Repository: https://github.com/ventoy/PXE/releases
+# Filename pattern: iventoy-{version}-linux-free.tar.gz
+iventoy_native_download_url: "https://github.com/ventoy/PXE/releases/download/v{{ iventoy_version }}/iventoy-{{ iventoy_version }}-linux-free.tar.gz"
