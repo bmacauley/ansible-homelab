@@ -114,8 +114,8 @@
       ansible.builtin.file:
         path: "{{ iventoy_install_dir }}"
         state: directory
-        owner: "{{ iventoy_user }}"
-        group: "{{ iventoy_group }}"
+        owner: root
+        group: root
         mode: "0755"
       tags:
         - role-iventoy
@@ -126,8 +126,8 @@
       ansible.builtin.file:
         path: "{{ iventoy_iso_dir }}"
         state: directory
-        owner: "{{ iventoy_user }}"
-        group: "{{ iventoy_group }}"
+        owner: root
+        group: root
         mode: "0755"
       tags:
         - role-iventoy
@@ -136,7 +136,7 @@
 
     - name: Check if iVentoy is already installed
       ansible.builtin.stat:
-        path: "{{ iventoy_install_dir }}/iventoy"
+        path: "{{ iventoy_install_dir }}/iventoy.sh"
       register: iventoy_installed
       tags:
         - role-iventoy
@@ -149,6 +149,7 @@
         dest: "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}-linux-free.tar.gz"
         mode: "0644"
       when: not iventoy_installed.stat.exists
+      register: iventoy_download
       tags:
         - role-iventoy
         - install
@@ -160,6 +161,7 @@
         dest: "{{ iventoy_tmp_dir }}"
         remote_src: true
       when: not iventoy_installed.stat.exists
+      register: iventoy_extract
       tags:
         - role-iventoy
         - install
@@ -174,6 +176,8 @@
         mode: "0755"
         remote_src: true
       when: not iventoy_installed.stat.exists
+      register: iventoy_copy
+      notify: Clean up iventoy temp files
       tags:
         - role-iventoy
         - install
@@ -202,18 +206,6 @@
         - install
         - native
 
-    - name: Fix ownership of installation directory (service runs as root)
-      ansible.builtin.file:
-        path: "{{ iventoy_install_dir }}"
-        owner: root
-        group: root
-        recurse: true
-      tags:
-        - role-iventoy
-        - install
-        - native
-        - config
-
     - name: Create iVentoy systemd service
       ansible.builtin.template:
         src: iventoy.service.j2
@@ -227,24 +219,6 @@
         - install
         - native
         - service
-
-    - name: Remove downloaded archive
-      ansible.builtin.file:
-        path: "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}-linux-free.tar.gz"
-        state: absent
-      tags:
-        - role-iventoy
-        - install
-        - native
-
-    - name: Remove extracted directory
-      ansible.builtin.file:
-        path: "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}"
-        state: absent
-      tags:
-        - role-iventoy
-        - install
-        - native
 
 - name: Manage iVentoy service (native)
   when: iventoy_install_method == "native"
@@ -266,7 +240,10 @@
   ansible.builtin.debug:
     msg:
       - "iVentoy installed via: {{ iventoy_install_method }}"
-      - "Web UI: http://{{ ansible_default_ipv4.address }}:{{ iventoy_web_port | default(26000) }}"
+      - "Web UI (IP): http://{{ ansible_default_ipv4.address }}:{{ iventoy_web_port | default(26000) }}"
+      - "Web UI (Tailscale): http://{{ ansible_hostname }}.{{ tailscale_tailnet | default('tailnet.ts.net') }}:{{ iventoy_web_port | default(26000) }}"
+      - "Web UI (mDNS): http://{{ ansible_hostname }}.local:{{ iventoy_web_port | default(26000) }}"
+      - "IP address: {{ ansible_default_ipv4.address }}"
       - "ISO directory: {{ iventoy_iso_dir }}"
       - "Service state: {{ iventoy_service_state }}"
       - "Install directory: {{ iventoy_install_dir }}"

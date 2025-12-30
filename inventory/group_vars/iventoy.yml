@@ -2,6 +2,10 @@
 # iVentoy group variables
 # Used after Tailscale bootstrap, accessed via Tailscale hostname
 
+# Tailscale tailnet domain (for MagicDNS URLs)
+# Find yours at: https://login.tailscale.com/admin/dns
+tailscale_tailnet: "tailfb76f.ts.net"
+
 # Installation method: 'docker' or 'native'
 # Native is more resource-efficient (~50-100MB vs ~150-200MB for Docker)
 # Docker offers easier updates and isolation

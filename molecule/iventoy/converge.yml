@@ -1,0 +1,50 @@
+---
+- name: Converge - Test iVentoy playbook
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    # iVentoy settings for testing
+    iventoy_install_method: "native"
+    iventoy_version: "1.0.20"
+    iventoy_install_dir: "/opt/iventoy"
+    iventoy_iso_dir: "/opt/iventoy/iso"
+    iventoy_web_port: "26000"
+    iventoy_http_port: "80"
+    # Skip service start in Docker (needs network capabilities for PXE)
+    iventoy_service_enabled: false
+    iventoy_service_state: stopped
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+
+  roles:
+    - role: iventoy
+      tags:
+        - role-iventoy
+        - install
+        - config
+        - service
+
+  post_tasks:
+    - name: Validate iVentoy node uptime
+      ansible.builtin.command: uptime
+      changed_when: false
+      register: uptime_output
+
+    - name: Display uptime
+      ansible.builtin.debug:
+        msg: "{{ uptime_output.stdout }}"
+
+    - name: Display test summary
+      ansible.builtin.debug:
+        msg:
+          - "iVentoy playbook tests complete!"
+          - "Installation directory: {{ iventoy_install_dir }}"
+          - "ISO directory: {{ iventoy_iso_dir }}"
+          - "Service: {{ iventoy_service_state }} (skipped in Docker test)"

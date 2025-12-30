@@ -1,12 +1,28 @@
 ---
 # iVentoy handlers
 
+- name: Clean up iventoy installation files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}-linux-free.tar.gz"
+    - "{{ iventoy_tmp_dir }}/iventoy-{{ iventoy_version }}"
+  when: iventoy_install_method == "native"
+  listen: Clean up iventoy temp files
+  tags:
+    - role-iventoy
+    - install
+    - native
+
 - name: Restart iventoy
   ansible.builtin.systemd:
     name: iventoy
-    state: restarted
+    state: "{{ 'restarted' if (iventoy_service_state | default('started')) == 'started' else 'stopped' }}"
     daemon_reload: true
-  when: iventoy_install_method == "native"
+  when:
+    - iventoy_install_method == "native"
+    - iventoy_service_state is defined
   listen: Restart iventoy
   tags:
     - role-iventoy

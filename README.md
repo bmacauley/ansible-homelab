@@ -9,6 +9,7 @@ Ansible roles and playbooks to configure servers in a homelab.
 - **mDNS** - Local network discovery via Avahi (`.local` hostnames)
 - **MinIO** - S3-compatible object storage
 - **Proxmox** - Hypervisor configuration with SSL, repos, and LXC templates
+- **iVentoy** - PXE boot server for network booting ISO images
 - **Vault Integration** - Secure secret management via HashiCorp Vault
 
 ## Prerequisites
@@ -38,6 +39,9 @@ make storage_bootstrap run
 
 # Configure storage host (via Tailscale)
 make storage run
+
+# Configure iVentoy host (via Tailscale)
+make iventoy run
 ```
 
 ## Project Structure
@@ -50,23 +54,27 @@ make storage run
 │       ├── proxmox.yml           # Proxmox group variables
 │       ├── proxmox_bootstrap.yml
 │       ├── storage.yml           # Storage group variables
-│       └── storage_bootstrap.yml
+│       ├── storage_bootstrap.yml
+│       └── iventoy.yml           # iVentoy group variables
 ├── playbooks/
 │   ├── proxmox.yml               # Proxmox configuration
 │   ├── proxmox_bootstrap.yml     # Proxmox bootstrap (Tailscale install)
 │   ├── storage.yml               # Storage node configuration
 │   ├── storage_bootstrap.yml     # Storage bootstrap (Tailscale install)
+│   ├── iventoy.yml               # iVentoy PXE boot server configuration
 │   └── site.yml                  # Main entrypoint (all hosts)
 ├── roles/
 │   ├── proxmox/                  # Proxmox hypervisor configuration
 │   ├── dns/                      # systemd-resolved + Tailscale MagicDNS
 │   ├── mdns/                     # Avahi mDNS configuration
-│   └── minio/                    # MinIO S3-compatible storage
+│   ├── minio/                    # MinIO S3-compatible storage
+│   └── iventoy/                  # iVentoy PXE boot server
 ├── molecule/                     # Molecule test scenarios
 │   ├── proxmox/
 │   ├── proxmox_bootstrap/
 │   ├── storage/
-│   └── storage_bootstrap/
+│   ├── storage_bootstrap/
+│   └── iventoy/
 └── Makefile                      # Task runner
 ```
 
@@ -125,6 +133,19 @@ make storage run TAGS=mdns       # mDNS only
 ```
 
 **Roles included:** mdns, minio
+
+### iventoy
+
+Configure iVentoy PXE boot server (assumes Tailscale already installed).
+
+```bash
+make iventoy run
+make iventoy run TAGS=install    # Installation only
+make iventoy run TAGS=config     # Configuration only
+make iventoy run TAGS=service    # Service management only
+```
+
+**Roles included:** iventoy
 
 ## Roles
 
@@ -199,6 +220,32 @@ Installs and configures MinIO S3-compatible object storage.
 
 **Tags:** `role-minio`, `install`, `config`, `service`
 
+### iventoy
+
+Installs and configures iVentoy PXE boot server for network booting ISO images.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `iventoy_install_method` | `native` | Installation method: `docker` or `native` |
+| `iventoy_version` | `1.0.20` | iVentoy version to install |
+| `iventoy_install_dir` | `/opt/iventoy` | Installation directory (native) |
+| `iventoy_iso_dir` | `/var/lib/iventoy/iso` | ISO files directory |
+| `iventoy_web_port` | `26000` | Web UI port |
+| `iventoy_http_port` | `80` | HTTP port for PXE boot |
+| `iventoy_https_port` | `443` | HTTPS port (if enabled) |
+| `iventoy_enable_https` | `false` | Enable HTTPS |
+| `iventoy_service_enabled` | `true` | Enable service on boot |
+| `iventoy_service_state` | `started` | Service state |
+
+**Tags:** `role-iventoy`, `install`, `config`, `service`, `docker`, `native`
+
+**Usage:**
+```bash
+# After running, access via:
+http://<hostname>:26000
+# Place ISO files in: /var/lib/iventoy/iso
+```
+
 ## Usage
 
 ### Make Commands
@@ -214,6 +261,9 @@ make proxmox_bootstrap run        # Bootstrap new Proxmox host
 make storage run                  # Configure storage host
 make storage_bootstrap run        # Bootstrap new storage host
 
+# iVentoy
+make iventoy run                  # Configure iVentoy host
+
 # Common options
 make <playbook> run TAGS=<tag>    # Run specific tags
 make <playbook> verbose run       # Run with -vvv
@@ -223,6 +273,7 @@ make <playbook> check run         # Dry-run mode
 make tests                        # Run all molecule tests
 make proxmox test                 # Test proxmox scenario
 make storage test                 # Test storage scenario
+make iventoy test                 # Test iventoy scenario
 make lint                         # Lint playbooks and roles
 
 # Utilities
@@ -244,6 +295,7 @@ make clean                        # Destroy test environments
    # Update inventory/hosts.yml with Tailscale hostname
    make proxmox run    # For Proxmox hosts
    make storage run    # For storage hosts
+   make iventoy run    # For iVentoy hosts
    ```
 
 ## Vault Setup
@@ -305,6 +357,12 @@ all:
         storage01_bootstrap:
           ansible_host: 192.168.1.31
           ansible_user: ubuntu
+
+    iventoy:
+      hosts:
+        iventoy01:
+          ansible_host: iventoy.tailnet-name.ts.net
+          ansible_user: ubuntu
 ```
 
 ## Testing
@@ -320,6 +378,7 @@ make proxmox test
 make proxmox_bootstrap test
 make storage test
 make storage_bootstrap test
+make iventoy test
 
 # Cleanup
 make clean
