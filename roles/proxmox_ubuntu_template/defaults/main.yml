@@ -51,6 +51,11 @@ proxmox_ubuntu_template_packages: []
 # QEMU guest agent settings
 proxmox_ubuntu_template_agent_enabled: true
 
+# Cloud-init vendor snippet for qemu-guest-agent
+# Installs qemu-guest-agent on first boot so Packer can discover VM IP
+proxmox_ubuntu_template_vendor_snippet_enabled: true
+proxmox_ubuntu_template_snippets_storage: "local"  # Storage for snippets (must have snippets content type)
+
 # SCSI controller type (virtio-scsi-single recommended for cloud images)
 proxmox_ubuntu_template_scsihw: "virtio-scsi-single"
 
