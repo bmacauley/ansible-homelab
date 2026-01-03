@@ -1,0 +1,3 @@
+---
+# proxmox_ubuntu_template role handlers
+# Template creation is a one-time operation - no service handlers needed

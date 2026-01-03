@@ -1,0 +1,61 @@
+---
+# proxmox_ubuntu_template role defaults
+# User-configurable variables for creating Ubuntu cloud-init VM templates
+
+# Enable/disable template creation
+proxmox_ubuntu_template_enabled: true
+
+# Force recreation of existing template (destroys and recreates)
+proxmox_ubuntu_template_force_recreate: false
+
+# Template identification
+proxmox_ubuntu_template_vmid: 9000
+proxmox_ubuntu_template_name: "ubuntu-2404-base"
+proxmox_ubuntu_template_description: "Ubuntu 24.04 LTS base cloud image template"
+
+# Storage configuration
+proxmox_ubuntu_template_storage: "local-lvm"    # VM disk storage
+proxmox_ubuntu_template_image_storage: "local"  # Cloud image download location
+
+# VM hardware configuration
+proxmox_ubuntu_template_memory: 2048    # Memory in MB
+proxmox_ubuntu_template_cores: 2        # CPU cores
+proxmox_ubuntu_template_sockets: 1      # CPU sockets
+proxmox_ubuntu_template_disk_size: "8G"  # Disk size (resize when cloning for actual use)
+
+# CPU type (host = best performance, requires same CPU architecture)
+proxmox_ubuntu_template_cpu_type: "host"
+
+# Network configuration
+proxmox_ubuntu_template_net_bridge: "vmbr0"
+proxmox_ubuntu_template_net_model: "virtio"
+proxmox_ubuntu_template_net_vlan: ""  # Optional VLAN tag
+
+# Cloud-init configuration
+proxmox_ubuntu_template_ciuser: "ubuntu"
+proxmox_ubuntu_template_cipassword: ""  # Optional - recommend SSH keys instead
+# SSH public keys - can be a string or path to file
+# Example: "ssh-ed25519 AAAA... user@host"
+proxmox_ubuntu_template_sshkeys: ""
+# IP configuration (ip=dhcp or ip=x.x.x.x/24,gw=x.x.x.x)
+proxmox_ubuntu_template_ipconfig: "ip=dhcp"
+# Optional DNS settings
+proxmox_ubuntu_template_nameserver: ""
+proxmox_ubuntu_template_searchdomain: ""
+
+# Packages to install via cloud-init (requires internet access on first boot)
+proxmox_ubuntu_template_packages:
+  - qemu-guest-agent
+
+# QEMU guest agent settings
+proxmox_ubuntu_template_agent_enabled: true
+
+# SCSI controller type (virtio-scsi-single recommended for cloud images)
+proxmox_ubuntu_template_scsihw: "virtio-scsi-single"
+
+# Boot settings
+proxmox_ubuntu_template_bios: "seabios"  # seabios or ovmf (UEFI)
+proxmox_ubuntu_template_machine: "q35"    # Machine type
+
+# OS type for Proxmox (l26 = Linux 2.6+ kernel)
+proxmox_ubuntu_template_ostype: "l26"

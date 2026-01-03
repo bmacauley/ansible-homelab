@@ -1,0 +1,364 @@
+---
+# proxmox_ubuntu_template role tasks
+# Creates an Ubuntu 24.04 cloud-init VM template on Proxmox
+
+# === Validation ===
+- name: Validate role is enabled
+  ansible.builtin.debug:
+    msg: "proxmox_ubuntu_template role is disabled, skipping"
+  when: not proxmox_ubuntu_template_enabled
+  tags:
+    - proxmox-ubuntu-template
+    - validate
+
+- name: End play if role is disabled
+  ansible.builtin.meta: end_host
+  when: not proxmox_ubuntu_template_enabled
+  tags:
+    - proxmox-ubuntu-template
+    - validate
+
+- name: Verify running on Proxmox host
+  ansible.builtin.command: qm list
+  register: proxmox_ubuntu_template_qm_check
+  changed_when: false
+  failed_when: proxmox_ubuntu_template_qm_check.rc != 0
+  tags:
+    - proxmox-ubuntu-template
+    - validate
+
+# === Check for existing template ===
+- name: Check if VM/template with VMID already exists
+  ansible.builtin.command: qm status {{ proxmox_ubuntu_template_vmid }}
+  register: proxmox_ubuntu_template_exists
+  changed_when: false
+  failed_when: false
+  tags:
+    - proxmox-ubuntu-template
+    - validate
+
+- name: Set fact for template existence
+  ansible.builtin.set_fact:
+    proxmox_ubuntu_template_vm_exists: "{{ proxmox_ubuntu_template_exists.rc == 0 }}"
+  tags:
+    - proxmox-ubuntu-template
+    - validate
+
+- name: Display existing template status
+  ansible.builtin.debug:
+    msg: "Template VMID {{ proxmox_ubuntu_template_vmid }} already exists: {{ proxmox_ubuntu_template_vm_exists }}"
+  tags:
+    - proxmox-ubuntu-template
+    - validate
+
+# === Handle force recreate ===
+- name: Destroy existing template if force_recreate is enabled
+  when:
+    - proxmox_ubuntu_template_vm_exists
+    - proxmox_ubuntu_template_force_recreate
+  tags:
+    - proxmox-ubuntu-template
+    - create
+  block:
+    - name: Stop VM if running
+      ansible.builtin.command: qm stop {{ proxmox_ubuntu_template_vmid }}
+      register: proxmox_ubuntu_template_stop
+      changed_when: proxmox_ubuntu_template_stop.rc == 0
+      failed_when: false
+      tags:
+        - proxmox-ubuntu-template
+        - create
+
+    - name: Wait for VM to stop
+      ansible.builtin.pause:
+        seconds: 5
+      when: proxmox_ubuntu_template_stop.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - create
+
+    - name: Destroy existing VM/template
+      ansible.builtin.command: qm destroy {{ proxmox_ubuntu_template_vmid }} --purge
+      register: proxmox_ubuntu_template_destroy
+      changed_when: proxmox_ubuntu_template_destroy.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - create
+
+    - name: Update existence fact after destruction
+      ansible.builtin.set_fact:
+        proxmox_ubuntu_template_vm_exists: false
+      tags:
+        - proxmox-ubuntu-template
+        - create
+
+- name: Skip creation if template exists and force_recreate is false
+  ansible.builtin.debug:
+    msg: "Template VMID {{ proxmox_ubuntu_template_vmid }} already exists. Set proxmox_ubuntu_template_force_recreate: true to recreate."
+  when:
+    - proxmox_ubuntu_template_vm_exists
+    - not proxmox_ubuntu_template_force_recreate
+  tags:
+    - proxmox-ubuntu-template
+    - create
+
+# === Download cloud image ===
+- name: Ensure image directory exists
+  ansible.builtin.file:
+    path: "{{ proxmox_ubuntu_template_image_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: not proxmox_ubuntu_template_vm_exists
+  tags:
+    - proxmox-ubuntu-template
+    - download
+
+- name: Check if cloud image already exists
+  ansible.builtin.stat:
+    path: "{{ proxmox_ubuntu_template_image_path }}"
+  register: proxmox_ubuntu_template_image_stat
+  when: not proxmox_ubuntu_template_vm_exists
+  tags:
+    - proxmox-ubuntu-template
+    - download
+
+- name: Download Ubuntu cloud image
+  ansible.builtin.get_url:
+    url: "{{ proxmox_ubuntu_template_image_url }}"
+    dest: "{{ proxmox_ubuntu_template_image_path }}"
+    mode: "0644"
+    timeout: 300
+  when:
+    - not proxmox_ubuntu_template_vm_exists
+    - not (proxmox_ubuntu_template_image_stat.stat.exists | default(false))
+  tags:
+    - proxmox-ubuntu-template
+    - download
+
+# === Create VM ===
+- name: Create base VM
+  when: not proxmox_ubuntu_template_vm_exists
+  tags:
+    - proxmox-ubuntu-template
+  block:
+    - name: Build network configuration string
+      ansible.builtin.set_fact:
+        proxmox_ubuntu_template_net_config: >-
+          {{ proxmox_ubuntu_template_net_model }},bridge={{ proxmox_ubuntu_template_net_bridge -}}
+          {%- if proxmox_ubuntu_template_net_vlan %},tag={{ proxmox_ubuntu_template_net_vlan }}{% endif %}
+      tags:
+        - proxmox-ubuntu-template
+        - create
+
+    - name: Create VM with qm create
+      ansible.builtin.command: >-
+        qm create {{ proxmox_ubuntu_template_vmid }}
+        --name {{ proxmox_ubuntu_template_name }}
+        --description "{{ proxmox_ubuntu_template_description }}"
+        --memory {{ proxmox_ubuntu_template_memory }}
+        --cores {{ proxmox_ubuntu_template_cores }}
+        --sockets {{ proxmox_ubuntu_template_sockets }}
+        --cpu {{ proxmox_ubuntu_template_cpu_type }}
+        --ostype {{ proxmox_ubuntu_template_ostype }}
+        --machine {{ proxmox_ubuntu_template_machine }}
+        --bios {{ proxmox_ubuntu_template_bios }}
+        --scsihw {{ proxmox_ubuntu_template_scsihw }}
+        --net0 {{ proxmox_ubuntu_template_net_config }}
+      register: proxmox_ubuntu_template_create
+      changed_when: proxmox_ubuntu_template_create.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - create
+
+    # === Import disk from cloud image ===
+    - name: Import cloud image as SCSI disk
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --scsi0 {{ proxmox_ubuntu_template_storage }}:0,import-from={{ proxmox_ubuntu_template_image_path }}
+      register: proxmox_ubuntu_template_import
+      changed_when: proxmox_ubuntu_template_import.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - create
+
+    # === Configure VM hardware ===
+    - name: Add cloud-init drive
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --ide2 {{ proxmox_ubuntu_template_storage }}:cloudinit
+      register: proxmox_ubuntu_template_cloudinit_drive
+      changed_when: proxmox_ubuntu_template_cloudinit_drive.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+
+    - name: Set boot order to SCSI disk
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --boot order=scsi0
+      register: proxmox_ubuntu_template_boot
+      changed_when: proxmox_ubuntu_template_boot.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+
+    - name: Add serial console for cloud-init
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --serial0 socket
+        --vga serial0
+      register: proxmox_ubuntu_template_serial
+      changed_when: proxmox_ubuntu_template_serial.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+
+    - name: Enable QEMU guest agent
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --agent enabled=1
+      register: proxmox_ubuntu_template_agent
+      changed_when: proxmox_ubuntu_template_agent.rc == 0
+      when: proxmox_ubuntu_template_agent_enabled
+      tags:
+        - proxmox-ubuntu-template
+        - config
+
+    # === Configure cloud-init ===
+    - name: Set cloud-init user
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --ciuser {{ proxmox_ubuntu_template_ciuser }}
+      register: proxmox_ubuntu_template_ciuser_set
+      changed_when: proxmox_ubuntu_template_ciuser_set.rc == 0
+      when: proxmox_ubuntu_template_ciuser | length > 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+        - cloudinit
+
+    - name: Set cloud-init password
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --cipassword {{ proxmox_ubuntu_template_cipassword }}
+      register: proxmox_ubuntu_template_cipassword_set
+      changed_when: proxmox_ubuntu_template_cipassword_set.rc == 0
+      when: proxmox_ubuntu_template_cipassword | length > 0
+      no_log: true
+      tags:
+        - proxmox-ubuntu-template
+        - config
+        - cloudinit
+
+    - name: Write SSH keys to temporary file
+      ansible.builtin.copy:
+        content: "{{ proxmox_ubuntu_template_sshkeys }}"
+        dest: "{{ proxmox_ubuntu_template_sshkeys_tmp }}"
+        mode: "0600"
+      when: proxmox_ubuntu_template_sshkeys | length > 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+        - cloudinit
+
+    - name: Set cloud-init SSH keys
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --sshkeys {{ proxmox_ubuntu_template_sshkeys_tmp }}
+      register: proxmox_ubuntu_template_sshkeys_set
+      changed_when: proxmox_ubuntu_template_sshkeys_set.rc == 0
+      when: proxmox_ubuntu_template_sshkeys | length > 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+        - cloudinit
+
+    - name: Remove temporary SSH keys file
+      ansible.builtin.file:
+        path: "{{ proxmox_ubuntu_template_sshkeys_tmp }}"
+        state: absent
+      when: proxmox_ubuntu_template_sshkeys | length > 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+        - cloudinit
+
+    - name: Set cloud-init IP configuration
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --ipconfig0 {{ proxmox_ubuntu_template_ipconfig }}
+      register: proxmox_ubuntu_template_ipconfig_set
+      changed_when: proxmox_ubuntu_template_ipconfig_set.rc == 0
+      when: proxmox_ubuntu_template_ipconfig | length > 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+        - cloudinit
+
+    - name: Set cloud-init nameserver
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --nameserver {{ proxmox_ubuntu_template_nameserver }}
+      register: proxmox_ubuntu_template_nameserver_set
+      changed_when: proxmox_ubuntu_template_nameserver_set.rc == 0
+      when: proxmox_ubuntu_template_nameserver | length > 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+        - cloudinit
+
+    - name: Set cloud-init search domain
+      ansible.builtin.command: >-
+        qm set {{ proxmox_ubuntu_template_vmid }}
+        --searchdomain {{ proxmox_ubuntu_template_searchdomain }}
+      register: proxmox_ubuntu_template_searchdomain_set
+      changed_when: proxmox_ubuntu_template_searchdomain_set.rc == 0
+      when: proxmox_ubuntu_template_searchdomain | length > 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+        - cloudinit
+
+    # === Resize disk ===
+    - name: Resize disk to target size
+      ansible.builtin.command: >-
+        qm disk resize {{ proxmox_ubuntu_template_vmid }} scsi0 {{ proxmox_ubuntu_template_disk_size }}
+      register: proxmox_ubuntu_template_resize
+      changed_when: proxmox_ubuntu_template_resize.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - config
+
+    # === Convert to template ===
+    - name: Convert VM to template
+      ansible.builtin.command: qm template {{ proxmox_ubuntu_template_vmid }}
+      register: proxmox_ubuntu_template_convert
+      changed_when: proxmox_ubuntu_template_convert.rc == 0
+      tags:
+        - proxmox-ubuntu-template
+        - template
+
+# === Verification ===
+- name: Get template configuration
+  ansible.builtin.command: qm config {{ proxmox_ubuntu_template_vmid }}
+  register: proxmox_ubuntu_template_config
+  changed_when: false
+  tags:
+    - proxmox-ubuntu-template
+    - verify
+
+- name: Display template information
+  ansible.builtin.debug:
+    msg:
+      - "Ubuntu cloud-init template created successfully!"
+      - "VMID: {{ proxmox_ubuntu_template_vmid }}"
+      - "Name: {{ proxmox_ubuntu_template_name }}"
+      - "To clone: qm clone {{ proxmox_ubuntu_template_vmid }} <new-vmid> --name <new-name> --full"
+      - ""
+      - "Template configuration:"
+      - "{{ proxmox_ubuntu_template_config.stdout_lines }}"
+  tags:
+    - proxmox-ubuntu-template
+    - verify
