@@ -1,0 +1,41 @@
+---
+# Create Ubuntu cloud-init VM template on Proxmox
+- name: Create Ubuntu cloud-init template on Proxmox
+  hosts: proxmox
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+      tags:
+        - always
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+      tags:
+        - always
+
+  roles:
+    - role: proxmox_ubuntu_template
+      tags:
+        - proxmox-ubuntu-template
+        - template
+
+  post_tasks:
+    - name: List available VM templates
+      ansible.builtin.shell: set -o pipefail && qm list | grep -E 'template|VMID'
+      args:
+        executable: /bin/bash
+      changed_when: false
+      failed_when: false
+      register: template_list
+      tags:
+        - validation
+
+    - name: Display available templates
+      ansible.builtin.debug:
+        msg: "{{ template_list.stdout_lines }}"
+      tags:
+        - validation

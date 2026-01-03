@@ -38,6 +38,7 @@ help: ## Show help
 	@echo 'Playbooks:'
 	@echo '  proxmox              Select proxmox playbook (has tests)'
 	@echo '  proxmox_bootstrap    Select proxmox_bootstrap playbook (has tests)'
+	@echo '  proxmox_ubuntu_template  Select Ubuntu template playbook (has tests)'
 	@echo '  storage              Select storage playbook (has tests)'
 	@echo '  storage_bootstrap    Select storage_bootstrap playbook (has tests)'
 	@echo '  iventoy              Select iventoy playbook (has tests)'
@@ -74,7 +75,7 @@ help: ## Show help
 # ----------------------------------------------------------------
 # Playbook selectors (set PLAYBOOK and SCENARIO variables)
 # ----------------------------------------------------------------
-.PHONY: proxmox proxmox_bootstrap storage storage_bootstrap iventoy
+.PHONY: proxmox proxmox_bootstrap proxmox_ubuntu_template storage storage_bootstrap iventoy
 
 proxmox: ## Select proxmox playbook
 	$(eval PLAYBOOK = proxmox)
@@ -83,6 +84,10 @@ proxmox: ## Select proxmox playbook
 proxmox_bootstrap: ## Select proxmox_bootstrap playbook
 	$(eval PLAYBOOK = proxmox_bootstrap)
 	$(eval SCENARIO = proxmox_bootstrap)
+
+proxmox_ubuntu_template: ## Select proxmox_ubuntu_template playbook
+	$(eval PLAYBOOK = proxmox_ubuntu_template)
+	$(eval SCENARIO = proxmox_ubuntu_template)
 
 storage: ## Select storage playbook
 	$(eval PLAYBOOK = storage)
@@ -147,6 +152,7 @@ deps: ## Install Ansible collections
 tests: ## Run ALL molecule tests
 	uv run molecule test -s proxmox
 	uv run molecule test -s proxmox_bootstrap
+	uv run molecule test -s proxmox_ubuntu_template
 	uv run molecule test -s storage
 	uv run molecule test -s storage_bootstrap
 	uv run molecule test -s iventoy
@@ -154,6 +160,7 @@ tests: ## Run ALL molecule tests
 clean: ## Destroy all molecule environments
 	uv run molecule destroy -s proxmox || true
 	uv run molecule destroy -s proxmox_bootstrap || true
+	uv run molecule destroy -s proxmox_ubuntu_template || true
 	uv run molecule destroy -s storage || true
 	uv run molecule destroy -s storage_bootstrap || true
 	uv run molecule destroy -s iventoy || true
