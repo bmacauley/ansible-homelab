@@ -1,0 +1,16 @@
+---
+# proxmox_ubuntu_template role internal variables
+# These are constants that should not typically be changed by users
+
+# Ubuntu 24.04 LTS (Noble Numbat) cloud image
+proxmox_ubuntu_template_image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+proxmox_ubuntu_template_image_filename: "noble-server-cloudimg-amd64.img"
+
+# Directory where cloud images are downloaded on Proxmox
+proxmox_ubuntu_template_image_dir: "/var/lib/vz/template/iso"
+
+# Full path to downloaded image
+proxmox_ubuntu_template_image_path: "{{ proxmox_ubuntu_template_image_dir }}/{{ proxmox_ubuntu_template_image_filename }}"
+
+# Temporary file for SSH keys (used by qm set --sshkeys)
+proxmox_ubuntu_template_sshkeys_tmp: "/tmp/proxmox_template_sshkeys.pub"
