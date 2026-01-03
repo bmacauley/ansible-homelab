@@ -56,6 +56,10 @@
               exit 0
               ;;
             set)
+              # Track cicustom setting
+              if [[ "$*" == *"--cicustom"* ]]; then
+                touch "$STATE_DIR/${VMID}.cicustom"
+              fi
               echo "Mock: qm $@ - success"
               exit 0
               ;;
@@ -76,11 +80,15 @@
               echo "scsi0: local-lvm:vm-9000-disk-0,size=32G"
               echo "ide2: local-lvm:cloudinit"
               echo "boot: order=scsi0"
+              # Include cicustom if it was set
+              if [ -f "$STATE_DIR/${VMID}.cicustom" ]; then
+                echo "cicustom: vendor=local:snippets/vendor-qemu-ga.yaml"
+              fi
               exit 0
               ;;
             destroy)
               # Remove state files
-              rm -f "$STATE_DIR/${VMID}.vm" "$STATE_DIR/${VMID}.template"
+              rm -f "$STATE_DIR/${VMID}.vm" "$STATE_DIR/${VMID}.template" "$STATE_DIR/${VMID}.cicustom"
               echo "Mock: qm $@ - success"
               exit 0
               ;;
