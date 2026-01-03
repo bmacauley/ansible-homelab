@@ -24,7 +24,9 @@
       "Bash(make:*)",
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:github.com)",
-      "Bash(uv run molecule test:*)"
+      "Bash(uv run molecule test:*)",
+      "mcp__filesystem__directory_tree",
+      "mcp__perplexity__search"
     ],
     "deny": [],
     "ask": []
