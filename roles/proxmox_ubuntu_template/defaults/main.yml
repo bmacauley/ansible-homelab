@@ -10,8 +10,8 @@ proxmox_ubuntu_template_force_recreate: false
 
 # Template identification
 proxmox_ubuntu_template_vmid: 9000
-proxmox_ubuntu_template_name: "ubuntu-2404-cloudinit"
-proxmox_ubuntu_template_description: "Ubuntu 24.04 LTS cloud-init template"
+proxmox_ubuntu_template_name: "ubuntu-2404-base"
+proxmox_ubuntu_template_description: "Ubuntu 24.04 LTS base cloud image template"
 
 # Storage configuration
 proxmox_ubuntu_template_storage: "local-lvm"    # VM disk storage
