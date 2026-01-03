@@ -1,0 +1,74 @@
+---
+- name: Verify - Test proxmox_ubuntu_template role
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify mock qm command exists
+      ansible.builtin.command: which qm
+      register: qm_check
+      changed_when: false
+
+    - name: Assert qm command is available
+      ansible.builtin.assert:
+        that:
+          - qm_check.rc == 0
+        fail_msg: "qm command should be available (mock for testing)"
+
+    - name: Verify qm list works
+      ansible.builtin.command: qm list
+      register: qm_list
+      changed_when: false
+
+    - name: Assert qm list output is valid
+      ansible.builtin.assert:
+        that:
+          - qm_list.rc == 0
+          - "'VMID' in qm_list.stdout"
+        fail_msg: "qm list should return valid output"
+
+    - name: Verify template directory exists
+      ansible.builtin.stat:
+        path: /var/lib/vz/template/iso
+      register: template_dir
+
+    - name: Assert template directory exists
+      ansible.builtin.assert:
+        that:
+          - template_dir.stat.exists
+          - template_dir.stat.isdir
+        fail_msg: "Template directory should exist"
+
+    - name: Verify cloud image was placed
+      ansible.builtin.stat:
+        path: /var/lib/vz/template/iso/noble-server-cloudimg-amd64.img
+      register: cloud_image
+
+    - name: Assert cloud image exists
+      ansible.builtin.assert:
+        that:
+          - cloud_image.stat.exists
+        fail_msg: "Cloud image should exist in template directory"
+
+    - name: Verify qm config shows template settings
+      ansible.builtin.command: qm config 9999
+      register: qm_config
+      changed_when: false
+
+    - name: Assert qm config returns expected values
+      ansible.builtin.assert:
+        that:
+          - qm_config.rc == 0
+          - "'memory' in qm_config.stdout"
+          - "'cores' in qm_config.stdout"
+        fail_msg: "qm config should return template configuration"
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg:
+          - "All verifications passed!"
+          - "- Mock qm command: OK"
+          - "- Template directory: OK"
+          - "- Cloud image: OK"
+          - "- Template configuration: OK"

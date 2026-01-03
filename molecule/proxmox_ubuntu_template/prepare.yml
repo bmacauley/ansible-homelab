@@ -1,0 +1,101 @@
+---
+- name: Prepare - Setup mock Proxmox environment
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - wget
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create mock qm command
+      ansible.builtin.copy:
+        dest: /usr/local/bin/qm
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          # Mock qm command for molecule testing
+          # Simulates Proxmox qm behavior with state tracking
+
+          STATE_DIR="/tmp/mock_qm_state"
+          mkdir -p "$STATE_DIR"
+
+          VMID="${2:-0}"
+
+          case "$1" in
+            list)
+              echo "      VMID NAME                 STATUS     MEM(MB)    BOOTDISK(GB) PID"
+              # List any "created" VMs
+              for f in "$STATE_DIR"/*.vm; do
+                [ -e "$f" ] || continue
+                id=$(basename "$f" .vm)
+                echo "      $id  mock-vm              stopped    2048       32.00        0"
+              done
+              exit 0
+              ;;
+            status)
+              # Check if VM exists in our state
+              if [ -f "$STATE_DIR/${VMID}.vm" ]; then
+                echo "status: stopped"
+                exit 0
+              else
+                echo "Configuration file 'nodes/pve/qemu-server/${VMID}.conf' does not exist"
+                exit 2
+              fi
+              ;;
+            create)
+              # Create state file for this VMID
+              touch "$STATE_DIR/${VMID}.vm"
+              echo "Mock: qm $@ - success"
+              exit 0
+              ;;
+            set)
+              echo "Mock: qm $@ - success"
+              exit 0
+              ;;
+            template)
+              # Mark as template
+              touch "$STATE_DIR/${VMID}.template"
+              echo "Mock: qm $@ - success"
+              exit 0
+              ;;
+            disk)
+              echo "Mock: qm disk $@ - success"
+              exit 0
+              ;;
+            config)
+              echo "name: ubuntu-2404-cloudinit"
+              echo "memory: 2048"
+              echo "cores: 2"
+              echo "scsi0: local-lvm:vm-9000-disk-0,size=32G"
+              echo "ide2: local-lvm:cloudinit"
+              echo "boot: order=scsi0"
+              exit 0
+              ;;
+            destroy)
+              # Remove state files
+              rm -f "$STATE_DIR/${VMID}.vm" "$STATE_DIR/${VMID}.template"
+              echo "Mock: qm $@ - success"
+              exit 0
+              ;;
+            stop)
+              echo "Mock: qm $@ - success"
+              exit 0
+              ;;
+            *)
+              echo "Mock: qm $@ - unhandled"
+              exit 0
+              ;;
+          esac
+
+    - name: Ensure template directory exists
+      ansible.builtin.file:
+        path: /var/lib/vz/template/iso
+        state: directory
+        mode: "0755"
