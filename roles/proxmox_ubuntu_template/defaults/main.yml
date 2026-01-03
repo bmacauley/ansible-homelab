@@ -21,7 +21,7 @@ proxmox_ubuntu_template_image_storage: "local"  # Cloud image download location
 proxmox_ubuntu_template_memory: 2048    # Memory in MB
 proxmox_ubuntu_template_cores: 2        # CPU cores
 proxmox_ubuntu_template_sockets: 1      # CPU sockets
-proxmox_ubuntu_template_disk_size: "32G"  # Disk size (resized from cloud image)
+proxmox_ubuntu_template_disk_size: "8G"  # Disk size (resize when cloning for actual use)
 
 # CPU type (host = best performance, requires same CPU architecture)
 proxmox_ubuntu_template_cpu_type: "host"
