@@ -24,17 +24,14 @@
         - template
 
   post_tasks:
-    - name: List available VM templates
-      ansible.builtin.shell: set -o pipefail && qm list | grep -E 'template|VMID'
-      args:
-        executable: /bin/bash
+    - name: List available VMs and templates
+      ansible.builtin.command: qm list
       changed_when: false
-      failed_when: false
       register: template_list
       tags:
         - validation
 
-    - name: Display available templates
+    - name: Display available VMs/templates
       ansible.builtin.debug:
         msg: "{{ template_list.stdout_lines }}"
       tags:
