@@ -1,6 +1,7 @@
 ---
 # proxmox_ubuntu_template role defaults
-# User-configurable variables for creating Ubuntu cloud-init VM templates
+# Creates a raw Ubuntu cloud-init template for use with Packer
+# Workflow: cloud image -> raw template (Ansible) -> baked templates (Packer)
 
 # Enable/disable template creation
 proxmox_ubuntu_template_enabled: true
@@ -10,8 +11,8 @@ proxmox_ubuntu_template_force_recreate: false
 
 # Template identification
 proxmox_ubuntu_template_vmid: 9000
-proxmox_ubuntu_template_name: "ubuntu-2404-base"
-proxmox_ubuntu_template_description: "Ubuntu 24.04 LTS base cloud image template"
+proxmox_ubuntu_template_name: "ubuntu-2404-raw"
+proxmox_ubuntu_template_description: "Ubuntu 24.04 LTS raw cloud image - use Packer to create baked templates"
 
 # Storage configuration
 proxmox_ubuntu_template_storage: "local-lvm"    # VM disk storage
@@ -44,11 +45,16 @@ proxmox_ubuntu_template_nameserver: ""
 proxmox_ubuntu_template_searchdomain: ""
 
 # Packages to install via cloud-init (requires internet access on first boot)
-proxmox_ubuntu_template_packages:
-  - qemu-guest-agent
+# Leave empty for raw template - Packer will install packages in baked templates
+proxmox_ubuntu_template_packages: []
 
 # QEMU guest agent settings
 proxmox_ubuntu_template_agent_enabled: true
+
+# Cloud-init vendor snippet for qemu-guest-agent
+# Installs qemu-guest-agent on first boot so Packer can discover VM IP
+proxmox_ubuntu_template_vendor_snippet_enabled: true
+proxmox_ubuntu_template_snippets_storage: "local"  # Storage for snippets (must have snippets content type)
 
 # SCSI controller type (virtio-scsi-single recommended for cloud images)
 proxmox_ubuntu_template_scsihw: "virtio-scsi-single"
