@@ -1,0 +1,45 @@
+---
+# Ansible-pull playbook for iVentoy installation
+# Usage: ansible-pull -U https://github.com/bmacauley/ansible-homelab.git playbooks/pull/iventoy.yml
+#
+# On a fresh LXC container, run:
+#   apt update && apt install -y ansible git
+#   ansible-pull -U https://github.com/bmacauley/ansible-homelab.git playbooks/pull/iventoy.yml
+#
+- name: Install and configure iVentoy via ansible-pull
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Ensure Python exists
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update -y && apt install -y python3)
+      changed_when: false
+      tags:
+        - always
+
+    - name: Gather facts after Python installation
+      ansible.builtin.setup:
+      tags:
+        - always
+
+  roles:
+    - role: iventoy
+      tags:
+        - role-iventoy
+        - install
+        - config
+        - service
+
+  post_tasks:
+    - name: Display iVentoy access information
+      ansible.builtin.debug:
+        msg:
+          - "iVentoy installed successfully!"
+          - "Web UI: http://{{ ansible_default_ipv4.address }}:{{ iventoy_web_port | default(26000) }}"
+          - "ISO directory: {{ iventoy_iso_dir | default('/opt/iventoy/iso') }}"
+          - ""
+          - "To add ISOs: scp your.iso root@{{ ansible_default_ipv4.address }}:{{ iventoy_iso_dir | default('/opt/iventoy/iso') }}/"
+      tags:
+        - validation
